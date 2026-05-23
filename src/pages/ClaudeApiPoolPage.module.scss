@@ -1,0 +1,549 @@
+@use '../styles/variables' as *;
+@use '../styles/mixins' as *;
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+  min-width: 0;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: $spacing-md;
+  flex-wrap: wrap;
+}
+
+.titleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  flex-wrap: wrap;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.configBar {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  flex-wrap: wrap;
+  padding: $spacing-md;
+  border: 1px solid var(--border-color);
+  border-radius: $radius-md;
+  background: var(--bg-primary);
+}
+
+.fixedPath {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  flex: 1 1 280px;
+  min-width: min(100%, 240px);
+  color: var(--text-secondary);
+  font-size: 13px;
+
+  strong {
+    color: var(--text-primary);
+    font-weight: 700;
+  }
+}
+
+.virtualCacheBar {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+  padding: $spacing-md;
+  border: 1px solid var(--border-color);
+  border-radius: $radius-md;
+  background: var(--bg-primary);
+}
+
+.routingBar {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+  padding: $spacing-md;
+  border: 1px solid var(--border-color);
+  border-radius: $radius-md;
+  background: var(--bg-primary);
+}
+
+.routingHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $spacing-md;
+  flex-wrap: wrap;
+
+  strong {
+    color: var(--text-primary);
+    font-size: 14px;
+  }
+
+  span {
+    color: var(--text-secondary);
+    font-size: 13px;
+  }
+}
+
+.routingGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  gap: $spacing-sm;
+
+  @include tablet {
+    grid-template-columns: repeat(2, minmax(150px, 1fr));
+  }
+
+  @include mobile {
+    grid-template-columns: 1fr;
+  }
+}
+
+.virtualCacheHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $spacing-md;
+  flex-wrap: wrap;
+
+  span {
+    color: var(--text-secondary);
+    font-size: 13px;
+  }
+}
+
+.virtualCacheGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  gap: $spacing-sm;
+
+  @include tablet {
+    grid-template-columns: repeat(2, minmax(150px, 1fr));
+  }
+
+  @include mobile {
+    grid-template-columns: 1fr;
+  }
+}
+
+.toolbar {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(150px, 180px) minmax(140px, 160px);
+  gap: $spacing-sm;
+  align-items: center;
+  padding: $spacing-md;
+  border: 1px solid var(--border-color);
+  border-radius: $radius-md;
+  background: var(--bg-primary);
+
+  @include mobile {
+    grid-template-columns: 1fr;
+  }
+}
+
+.toolbarActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: $spacing-sm;
+  flex-wrap: wrap;
+  grid-column: 1 / -1;
+}
+
+.tablePanel {
+  border: 1px solid var(--border-color);
+  border-radius: $radius-md;
+  background: var(--bg-primary);
+  overflow: hidden;
+}
+
+.tableScroll {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  min-width: 1320px;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.table th,
+.table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
+  font-size: 13px;
+  vertical-align: middle;
+  text-align: left;
+}
+
+.table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.table tbody tr:hover {
+  background: var(--bg-tertiary);
+}
+
+.batchBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $spacing-sm;
+  flex-wrap: wrap;
+  padding: 10px $spacing-md;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.selectCell {
+  width: 48px;
+  text-align: center;
+
+  :global(label) {
+    justify-content: center;
+  }
+}
+
+.numberCell {
+  width: 72px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+
+.statusCell {
+  width: 110px;
+}
+
+.baseUrlCell {
+  width: 250px;
+}
+
+.modelsCell {
+  width: 210px;
+}
+
+.headersCell {
+  width: 180px;
+}
+
+.smallNumberCell {
+  width: 92px;
+  font-variant-numeric: tabular-nums;
+}
+
+.actionsCell {
+  width: 260px;
+}
+
+.mono {
+  font-family: $font-mono;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pillList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-height: 58px;
+  overflow: hidden;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  max-width: 160px;
+  padding: 2px 7px;
+  border-radius: $radius-sm;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 9px;
+  border-radius: $radius-full;
+  border: 1px solid var(--border-color);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.statusEnabled {
+  color: $success-color;
+  border-color: rgba($success-color, 0.35);
+  background: rgba($success-color, 0.08);
+}
+
+.statusCooling {
+  color: $warning-color;
+  border-color: rgba($warning-color, 0.35);
+  background: rgba($warning-color, 0.08);
+}
+
+.statusDisabled {
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+}
+
+.rowActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.iconButton {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+
+  > span {
+    display: inline-flex;
+  }
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $spacing-sm;
+  flex-wrap: wrap;
+  padding: $spacing-md;
+}
+
+.paginationControls {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+}
+
+.emptyState,
+.errorState {
+  padding: $spacing-xl;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.errorState {
+  color: $error-color;
+}
+
+.modalGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: $spacing-sm $spacing-md;
+
+  @include mobile {
+    grid-template-columns: 1fr;
+  }
+}
+
+.fullSpan {
+  grid-column: 1 / -1;
+}
+
+.textarea {
+  min-height: 112px;
+  resize: vertical;
+  font-family: $font-mono;
+  font-size: 13px;
+}
+
+.importPreview {
+  margin-top: $spacing-md;
+  padding: $spacing-sm;
+  border: 1px solid var(--border-color);
+  border-radius: $radius-md;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.testPanel {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+}
+
+.testSummary {
+  display: grid;
+  grid-template-columns: minmax(120px, 180px) minmax(100px, 130px) minmax(0, 1fr);
+  gap: $spacing-sm;
+  padding: $spacing-md;
+  border: 1px solid var(--border-color);
+  border-radius: $radius-md;
+  background: var(--bg-secondary);
+
+  > div {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  span {
+    color: var(--text-secondary);
+    font-size: 12px;
+  }
+
+  strong {
+    min-width: 0;
+    color: var(--text-primary);
+    font-size: 13px;
+  }
+
+  @include mobile {
+    grid-template-columns: 1fr;
+  }
+}
+
+.testControls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 240px);
+  gap: $spacing-md;
+
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  @include mobile {
+    grid-template-columns: 1fr;
+  }
+}
+
+.testLog {
+  min-height: 220px;
+  max-height: 360px;
+  overflow: auto;
+  padding: $spacing-md;
+  border-radius: $radius-md;
+  background: #111827;
+  color: #d1d5db;
+  font-family: $font-mono;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+
+  pre {
+    margin: $spacing-sm 0 0;
+    color: #d1d5db;
+    font-family: inherit;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+}
+
+.logSuccess {
+  color: #86efac;
+}
+
+.logError {
+  color: #fca5a5;
+}
+
+.importHelp {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: $spacing-md;
+  margin-bottom: $spacing-md;
+  color: var(--text-secondary);
+  font-size: 13px;
+
+  strong {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--text-primary);
+    font-size: 14px;
+  }
+
+  p {
+    margin: 0;
+    line-height: 1.5;
+  }
+
+  @include mobile {
+    flex-direction: column;
+  }
+}
+
+.exampleActions {
+  display: flex;
+  gap: $spacing-sm;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.importExample {
+  max-height: 220px;
+  margin: 0 0 $spacing-md;
+  padding: $spacing-md;
+  overflow: auto;
+  border: 1px solid var(--border-color);
+  border-radius: $radius-md;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-family: $font-mono;
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre;
+}
+
+.importTextarea {
+  min-height: 240px;
+  margin-top: $spacing-sm;
+}
+
+.modalFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: $spacing-sm;
+  flex-wrap: wrap;
+}

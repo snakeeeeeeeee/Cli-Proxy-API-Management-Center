@@ -112,6 +112,7 @@
     "basic_settings": "Basic Settings",
     "api_keys": "API Keys",
     "ai_providers": "AI Providers",
+    "claude_api_pool": "Claude API Pool",
     "auth_files": "Auth Files",
     "oauth": "OAuth Login",
     "quota_management": "Quota Management",

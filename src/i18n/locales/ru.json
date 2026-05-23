@@ -112,6 +112,7 @@
     "basic_settings": "Основные настройки",
     "api_keys": "API ключи",
     "ai_providers": "Поставщики AI",
+    "claude_api_pool": "Пул Claude API",
     "auth_files": "Файлы аутентификации",
     "oauth": "OAuth вход",
     "quota_management": "Управление квотами",
