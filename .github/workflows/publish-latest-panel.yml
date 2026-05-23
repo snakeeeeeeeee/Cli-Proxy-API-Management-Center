@@ -1,0 +1,53 @@
+name: Publish Latest Panel
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  publish-latest-panel:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build all-in-one HTML
+        run: npm run build
+        env:
+          VERSION: latest-main-${{ github.sha }}
+
+      - name: Prepare release asset
+        run: |
+          cp dist/index.html management.html
+          ls -lh management.html
+
+      - name: Publish latest release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: latest-panel
+          name: Latest Management Panel
+          body: |
+            Automatically built from main.
+
+            Commit: ${{ github.sha }}
+          files: management.html
+          draft: false
+          prerelease: false
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
