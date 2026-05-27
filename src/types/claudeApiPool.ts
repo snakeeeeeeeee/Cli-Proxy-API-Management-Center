@@ -12,6 +12,7 @@ export interface ClaudeAPIPoolConfig {
 
 export interface ClaudeAPIPoolVirtualCacheConfig {
   enabled: boolean;
+  mode?: 'natural' | 'forced' | string;
   hit_rate: number;
   target_cache_reuse_ratio: number;
   min_cache_tokens?: number;

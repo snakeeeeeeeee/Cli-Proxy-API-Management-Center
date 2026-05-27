@@ -36,6 +36,10 @@ const statusOptions = [
   { value: 'cooling', label: '冷却中' },
   { value: 'disabled', label: '已禁用' },
 ];
+const virtualCacheModeOptions = [
+  { value: 'natural', label: '自然增长' },
+  { value: 'forced', label: '强制目标' },
+];
 
 const simpleImportExample = `key-1-----workspace-a
 key-2-----workspace-b`;
@@ -62,6 +66,7 @@ models:
 
 virtual-cache:
   enabled: true
+  mode: natural
   hit-rate: 0.9
   target-cache-reuse-ratio: 0.9
   context-shrink-reset-ratio: 0.7
@@ -105,6 +110,7 @@ const jsonImportExample = `{
   ],
   "virtual-cache": {
     "enabled": true,
+    "mode": "natural",
     "hit-rate": 0.9,
     "target-cache-reuse-ratio": 0.9,
     "context-shrink-reset-ratio": 0.7
@@ -149,6 +155,7 @@ type EditDraft = {
 
 type VirtualCacheDraft = {
   enabled: boolean;
+  mode: 'natural' | 'forced';
   hitRate: string;
   targetCacheReuseRatio: string;
   contextShrinkResetRatio: string;
@@ -183,6 +190,7 @@ const emptyDraft: EditDraft = {
 
 const defaultVirtualCacheDraft: VirtualCacheDraft = {
   enabled: true,
+  mode: 'natural',
   hitRate: '90',
   targetCacheReuseRatio: '0',
   contextShrinkResetRatio: '70',
@@ -223,6 +231,7 @@ const configToVirtualCacheDraft = (config: ClaudeAPIPoolConfig): VirtualCacheDra
   if (!virtualCache) return defaultVirtualCacheDraft;
   return {
     enabled: virtualCache.enabled,
+    mode: virtualCache.mode === 'forced' ? 'forced' : 'natural',
     hitRate: String(Math.round((virtualCache.hit_rate || 0) * 1000) / 10),
     targetCacheReuseRatio: String(Math.round((virtualCache.target_cache_reuse_ratio || 0) * 1000) / 10),
     contextShrinkResetRatio: String(Math.round((virtualCache.context_shrink_reset_ratio || 0) * 1000) / 10),
@@ -294,6 +303,7 @@ const virtualCacheDraftToConfig = (draft: VirtualCacheDraft) => {
   }
   return {
     enabled: draft.enabled,
+    mode: draft.mode,
     hit_rate: hitRatePercent / 100,
     target_cache_reuse_ratio: targetCacheReusePercent / 100,
     context_shrink_reset_ratio: shrinkResetPercent / 100,
@@ -755,6 +765,20 @@ export function ClaudeApiPoolPage() {
           </span>
         </div>
         <div className={styles.virtualCacheGrid}>
+          <label className={styles.selectField}>
+            <span>账本模式</span>
+            <Select
+              value={virtualCacheDraft.mode}
+              options={virtualCacheModeOptions}
+              onChange={(mode) =>
+                setVirtualCacheDraft((prev) => ({
+                  ...prev,
+                  mode: mode === 'forced' ? 'forced' : 'natural',
+                }))
+              }
+              ariaLabel="选择虚拟缓存账本模式"
+            />
+          </label>
           <Input
             label="缓存命中率 %"
             type="number"

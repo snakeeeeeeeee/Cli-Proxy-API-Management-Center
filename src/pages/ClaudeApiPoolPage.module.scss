@@ -144,6 +144,19 @@
   }
 }
 
+.selectField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+
+  > span {
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+  }
+}
+
 .toolbar {
   display: grid;
   grid-template-columns: minmax(180px, 1fr) minmax(150px, 180px) minmax(140px, 160px);
