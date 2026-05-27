@@ -64,12 +64,7 @@ virtual-cache:
   enabled: true
   hit-rate: 0.9
   target-cache-reuse-ratio: 0.9
-  min-cache-tokens: 0
-  max-cache-tokens: 0
-  uncached-input-tokens: 0
   context-shrink-reset-ratio: 0.7
-  min-creation-tokens: 0
-  max-creation-tokens: 1200
 
 routing:
   per-account-rpm: 0
@@ -112,12 +107,7 @@ const jsonImportExample = `{
     "enabled": true,
     "hit-rate": 0.9,
     "target-cache-reuse-ratio": 0.9,
-    "min-cache-tokens": 0,
-    "max-cache-tokens": 0,
-    "uncached-input-tokens": 0,
-    "context-shrink-reset-ratio": 0.7,
-    "min-creation-tokens": 0,
-    "max-creation-tokens": 1200
+    "context-shrink-reset-ratio": 0.7
   },
   "routing": {
     "per-account-rpm": 0,
@@ -161,12 +151,7 @@ type VirtualCacheDraft = {
   enabled: boolean;
   hitRate: string;
   targetCacheReuseRatio: string;
-  minCacheTokens: string;
-  maxCacheTokens: string;
-  uncachedInputTokens: string;
   contextShrinkResetRatio: string;
-  minCreationTokens: string;
-  maxCreationTokens: string;
 };
 
 type RoutingDraft = {
@@ -200,12 +185,7 @@ const defaultVirtualCacheDraft: VirtualCacheDraft = {
   enabled: true,
   hitRate: '90',
   targetCacheReuseRatio: '0',
-  minCacheTokens: '0',
-  maxCacheTokens: '0',
-  uncachedInputTokens: '0',
   contextShrinkResetRatio: '70',
-  minCreationTokens: '0',
-  maxCreationTokens: '1200',
 };
 
 const defaultRoutingDraft: RoutingDraft = {
@@ -245,12 +225,7 @@ const configToVirtualCacheDraft = (config: ClaudeAPIPoolConfig): VirtualCacheDra
     enabled: virtualCache.enabled,
     hitRate: String(Math.round((virtualCache.hit_rate || 0) * 1000) / 10),
     targetCacheReuseRatio: String(Math.round((virtualCache.target_cache_reuse_ratio || 0) * 1000) / 10),
-    minCacheTokens: String(virtualCache.min_cache_tokens || 0),
-    maxCacheTokens: String(virtualCache.max_cache_tokens || 0),
-    uncachedInputTokens: String(virtualCache.uncached_input_tokens || 0),
     contextShrinkResetRatio: String(Math.round((virtualCache.context_shrink_reset_ratio || 0) * 1000) / 10),
-    minCreationTokens: String(virtualCache.min_creation_tokens || 0),
-    maxCreationTokens: String(virtualCache.max_creation_tokens || 0),
   };
 };
 
@@ -321,12 +296,7 @@ const virtualCacheDraftToConfig = (draft: VirtualCacheDraft) => {
     enabled: draft.enabled,
     hit_rate: hitRatePercent / 100,
     target_cache_reuse_ratio: targetCacheReusePercent / 100,
-    min_cache_tokens: parseNonNegativeInt(draft.minCacheTokens, '最小缓存 token'),
-    max_cache_tokens: parseNonNegativeInt(draft.maxCacheTokens, '最大缓存 token'),
-    uncached_input_tokens: parseNonNegativeInt(draft.uncachedInputTokens, '保留普通输入 token'),
     context_shrink_reset_ratio: shrinkResetPercent / 100,
-    min_creation_tokens: parseNonNegativeInt(draft.minCreationTokens, '最小新增缓存 token'),
-    max_creation_tokens: parseNonNegativeInt(draft.maxCreationTokens, '最大新增缓存 token'),
   };
 };
 
@@ -804,30 +774,6 @@ export function ClaudeApiPoolPage() {
             onChange={(event) => setVirtualCacheDraft((prev) => ({ ...prev, targetCacheReuseRatio: event.target.value }))}
           />
           <Input
-            label="最小缓存 token"
-            type="number"
-            min="0"
-            step="1"
-            value={virtualCacheDraft.minCacheTokens}
-            onChange={(event) => setVirtualCacheDraft((prev) => ({ ...prev, minCacheTokens: event.target.value }))}
-          />
-          <Input
-            label="最大缓存 token"
-            type="number"
-            min="0"
-            step="1"
-            value={virtualCacheDraft.maxCacheTokens}
-            onChange={(event) => setVirtualCacheDraft((prev) => ({ ...prev, maxCacheTokens: event.target.value }))}
-          />
-          <Input
-            label="保留普通输入 token"
-            type="number"
-            min="0"
-            step="1"
-            value={virtualCacheDraft.uncachedInputTokens}
-            onChange={(event) => setVirtualCacheDraft((prev) => ({ ...prev, uncachedInputTokens: event.target.value }))}
-          />
-          <Input
             label="压缩重置比例 %"
             type="number"
             min="0"
@@ -835,22 +781,6 @@ export function ClaudeApiPoolPage() {
             step="0.1"
             value={virtualCacheDraft.contextShrinkResetRatio}
             onChange={(event) => setVirtualCacheDraft((prev) => ({ ...prev, contextShrinkResetRatio: event.target.value }))}
-          />
-          <Input
-            label="最小新增缓存 token"
-            type="number"
-            min="0"
-            step="1"
-            value={virtualCacheDraft.minCreationTokens}
-            onChange={(event) => setVirtualCacheDraft((prev) => ({ ...prev, minCreationTokens: event.target.value }))}
-          />
-          <Input
-            label="最大新增缓存 token"
-            type="number"
-            min="0"
-            step="1"
-            value={virtualCacheDraft.maxCreationTokens}
-            onChange={(event) => setVirtualCacheDraft((prev) => ({ ...prev, maxCreationTokens: event.target.value }))}
           />
         </div>
       </div>

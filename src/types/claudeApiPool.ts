@@ -14,12 +14,12 @@ export interface ClaudeAPIPoolVirtualCacheConfig {
   enabled: boolean;
   hit_rate: number;
   target_cache_reuse_ratio: number;
-  min_cache_tokens: number;
-  max_cache_tokens: number;
-  uncached_input_tokens: number;
+  min_cache_tokens?: number;
+  max_cache_tokens?: number;
+  uncached_input_tokens?: number;
   context_shrink_reset_ratio: number;
-  min_creation_tokens: number;
-  max_creation_tokens: number;
+  min_creation_tokens?: number;
+  max_creation_tokens?: number;
 }
 
 export interface ClaudeAPIPoolVirtualCacheReuseStats {
