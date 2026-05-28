@@ -6,11 +6,16 @@ import { SelectionCheckbox } from '@/components/ui/SelectionCheckbox';
 import { Select } from '@/components/ui/Select';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import {
+  IconChartLine,
   IconDownload,
   IconPencil,
   IconPlay,
   IconPower,
   IconRefreshCw,
+  IconSearch,
+  IconSettings,
+  IconShield,
+  IconSlidersHorizontal,
   IconTable,
   IconTrash2,
   IconUpload,
@@ -410,6 +415,8 @@ const statusLabel = (status: string) => {
 const formatPercent = (value?: number) => `${Math.round(((value || 0) * 100) * 10) / 10}%`;
 const formatNumber = (value?: number) => new Intl.NumberFormat('zh-CN').format(value || 0);
 const formatMs = (value?: number) => (value && value > 0 ? `${Math.round(value)}ms` : '-');
+const formatTokenPair = (read?: number, created?: number) =>
+  `读 ${formatNumber(read)} / 建 ${formatNumber(created)}`;
 const historyClass = (state?: string) => {
   if (state === 'green') return styles.historyGreen;
   if (state === 'yellow') return styles.historyYellow;
@@ -460,6 +467,7 @@ export function ClaudeApiPoolPage() {
   const allPageSelected = items.length > 0 && items.every((item) => selectedPositions.has(item.position));
   const somePageSelected = items.some((item) => selectedPositions.has(item.position));
   const runtimeStats = config['runtime-stats'];
+  const runtimeTotalAccounts = runtimeStats?.account_count || total;
   const autoRefreshPaused = Boolean(editing || importOpen || testingItem);
   const modelOptions = useMemo(() => {
     const names = new Set<string>();
@@ -783,273 +791,318 @@ export function ClaudeApiPoolPage() {
 
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
+      <header className={styles.header}>
         <div className={styles.titleBlock}>
+          <span className={styles.eyebrow}>账号池运行面板</span>
           <h1 className={styles.title}>Claude API 池</h1>
           <div className={styles.meta}>
-            <span>{total} 个账号</span>
-            <span>{config.enabled ? '已启用' : '未启用'}</span>
+            <span>{formatNumber(total)} 个账号</span>
+            <span>{config.enabled ? '运行中' : '已停用'}</span>
             <span className={styles.mono}>{config.path || poolStoreName}</span>
           </div>
         </div>
-      </div>
-
-      <div className={styles.configBar}>
-        <ToggleSwitch
-          checked={config.enabled}
-          onChange={(enabled) => setConfig((prev) => ({ ...prev, enabled }))}
-          label="启用账号池"
-        />
-        <div className={styles.fixedPath}>
-          <span>SQLite 主存储</span>
-          <strong className={styles.mono}>{config.path || poolStoreName}</strong>
-          <span>YAML 导入格式</span>
-          <strong className={styles.mono}>{config.import_path || poolImportFileName}</strong>
+        <div className={styles.headerActions}>
+          <Select
+            value={String(refreshIntervalMS)}
+            onChange={(value) => setRefreshIntervalMS(Number(value))}
+            options={refreshIntervalOptions}
+            ariaLabel="选择自动刷新间隔"
+          />
+          <span className={styles.refreshMeta}>
+            {autoRefreshPaused ? '自动刷新已暂停' : lastRefreshAt ? `刷新 ${lastRefreshAt.toLocaleTimeString()}` : '尚未刷新'}
+          </span>
+          <Button variant="secondary" onClick={refreshAll}>
+            <IconRefreshCw size={16} /> 刷新
+          </Button>
+          <Button onClick={saveConfig} loading={savingConfig}>
+            保存配置
+          </Button>
         </div>
-        <Button variant="secondary" onClick={saveConfig} loading={savingConfig}>
-          保存
-        </Button>
-      </div>
+      </header>
 
       <div className={styles.statsGrid}>
         <div className={styles.statItem}>
           <span>可用账号</span>
-          <strong>{formatNumber(runtimeStats?.available_accounts)} / {formatNumber(runtimeStats?.account_count || total)}</strong>
+          <strong>{formatNumber(runtimeStats?.available_accounts)}</strong>
+          <small>总数 {formatNumber(runtimeTotalAccounts)}</small>
         </div>
         <div className={styles.statItem}>
           <span>全局并发</span>
           <strong>{formatNumber(runtimeStats?.in_flight)}</strong>
+          <small>当前请求</small>
         </div>
         <div className={styles.statItem}>
           <span>RPM</span>
           <strong>{formatNumber(runtimeStats?.rpm_used)}{runtimeStats?.rpm_limit ? ` / ${formatNumber(runtimeStats.rpm_limit)}` : ''}</strong>
+          <small>滚动窗口</small>
         </div>
         <div className={styles.statItem}>
           <span>真实缓存率</span>
           <strong>{formatPercent(runtimeStats?.real_cache_ratio)}</strong>
+          <small>{formatTokenPair(runtimeStats?.cache_read_tokens, runtimeStats?.cache_creation_tokens)}</small>
         </div>
         <div className={styles.statItem}>
           <span>亲和 Key / lanes</span>
           <strong>{formatNumber(runtimeStats?.active_affinity_keys)} / {formatNumber(runtimeStats?.warm_lanes)}</strong>
+          <small>缓存路由</small>
         </div>
         <div className={styles.statItem}>
           <span>成功率</span>
           <strong>{formatPercent(runtimeStats?.success_rate)}</strong>
+          <small>{formatNumber(runtimeStats?.success_count)} / {formatNumber(runtimeStats?.request_count)}</small>
         </div>
       </div>
 
-      <div className={styles.virtualCacheBar}>
-        <div className={styles.virtualCacheHeader}>
+      <section className={styles.configBar}>
+        <div className={styles.sectionHeader}>
+          <div>
+            <span className={styles.sectionKicker}><IconSettings size={15} /> 基础配置</span>
+            <h2>运行状态</h2>
+          </div>
           <ToggleSwitch
-            checked={virtualCacheDraft.enabled}
-            onChange={(enabled) => setVirtualCacheDraft((prev) => ({ ...prev, enabled }))}
-            label="启用虚拟缓存账本"
+            checked={config.enabled}
+            onChange={(enabled) => setConfig((prev) => ({ ...prev, enabled }))}
+            label="启用账号池"
           />
-          <span>
-            目标 {formatPercent(config['reuse-stats']?.target_ratio)} · 最近
-            {Math.round((config['reuse-stats']?.window_seconds || 300) / 60)} 分钟实际
-            {formatPercent(config['reuse-stats']?.actual_ratio)} · 样本 {config['reuse-stats']?.sample_count || 0}
-          </span>
         </div>
-        <div className={styles.virtualCacheGrid}>
-          <label className={styles.selectField}>
-            <span>账本模式</span>
-            <Select
-              value={virtualCacheDraft.mode}
-              options={virtualCacheModeOptions}
-              onChange={(mode) =>
-                setVirtualCacheDraft((prev) => ({
-                  ...prev,
-                  mode: mode === 'forced' ? 'forced' : 'natural',
-                }))
-              }
-              ariaLabel="选择虚拟缓存账本模式"
+        <div className={styles.fixedPath}>
+          <div>
+            <span>SQLite 主存储</span>
+            <strong className={styles.mono}>{config.path || poolStoreName}</strong>
+          </div>
+          <div>
+            <span>YAML 导入格式</span>
+            <strong className={styles.mono}>{config.import_path || poolImportFileName}</strong>
+          </div>
+        </div>
+      </section>
+
+      <div className={styles.settingsLayout}>
+        <section className={styles.virtualCacheBar}>
+          <div className={styles.virtualCacheHeader}>
+            <div>
+              <span className={styles.sectionKicker}><IconChartLine size={15} /> 虚拟账本</span>
+              <h2>对外缓存口径</h2>
+            </div>
+            <div className={styles.sectionStatus}>
+              <span>目标 {formatPercent(config['reuse-stats']?.target_ratio)}</span>
+              <span>实际 {formatPercent(config['reuse-stats']?.actual_ratio)}</span>
+              <span>样本 {config['reuse-stats']?.sample_count || 0}</span>
+            </div>
+          </div>
+          <div className={styles.virtualCacheGrid}>
+            <ToggleSwitch
+              checked={virtualCacheDraft.enabled}
+              onChange={(enabled) => setVirtualCacheDraft((prev) => ({ ...prev, enabled }))}
+              label="启用虚拟缓存账本"
             />
-          </label>
-          <Input
-            label="缓存命中率 %"
-            type="number"
-            min="0"
-            max="100"
-            step="0.1"
-            value={virtualCacheDraft.hitRate}
-            onChange={(event) => setVirtualCacheDraft((prev) => ({ ...prev, hitRate: event.target.value }))}
-          />
-          <Input
-            label="目标复用率 %"
-            type="number"
-            min="0"
-            max="100"
-            step="0.1"
-            value={virtualCacheDraft.targetCacheReuseRatio}
-            onChange={(event) => setVirtualCacheDraft((prev) => ({ ...prev, targetCacheReuseRatio: event.target.value }))}
-          />
-          <Input
-            label="压缩重置比例 %"
-            type="number"
-            min="0"
-            max="100"
-            step="0.1"
-            value={virtualCacheDraft.contextShrinkResetRatio}
-            onChange={(event) => setVirtualCacheDraft((prev) => ({ ...prev, contextShrinkResetRatio: event.target.value }))}
-          />
-        </div>
-      </div>
+            <label className={styles.selectField}>
+              <span>账本模式</span>
+              <Select
+                value={virtualCacheDraft.mode}
+                options={virtualCacheModeOptions}
+                onChange={(mode) =>
+                  setVirtualCacheDraft((prev) => ({
+                    ...prev,
+                    mode: mode === 'forced' ? 'forced' : 'natural',
+                  }))
+                }
+                ariaLabel="选择虚拟缓存账本模式"
+              />
+            </label>
+            <Input
+              label="缓存命中率 %"
+              type="number"
+              min="0"
+              max="100"
+              step="0.1"
+              value={virtualCacheDraft.hitRate}
+              onChange={(event) => setVirtualCacheDraft((prev) => ({ ...prev, hitRate: event.target.value }))}
+            />
+            <Input
+              label="目标复用率 %"
+              type="number"
+              min="0"
+              max="100"
+              step="0.1"
+              value={virtualCacheDraft.targetCacheReuseRatio}
+              onChange={(event) => setVirtualCacheDraft((prev) => ({ ...prev, targetCacheReuseRatio: event.target.value }))}
+            />
+            <Input
+              label="压缩重置比例 %"
+              type="number"
+              min="0"
+              max="100"
+              step="0.1"
+              value={virtualCacheDraft.contextShrinkResetRatio}
+              onChange={(event) => setVirtualCacheDraft((prev) => ({ ...prev, contextShrinkResetRatio: event.target.value }))}
+            />
+          </div>
+        </section>
 
-      <div className={styles.routingBar}>
-        <div className={styles.routingHeader}>
-          <strong>池路由保护</strong>
-          <span>这些限制只作用于 Claude API 池账号，冷却粒度是账号 + 模型。</span>
-        </div>
-        <div className={styles.routingGrid}>
-          <Input
-            label="每账号 RPM"
-            type="number"
-            min="0"
-            step="1"
-            value={routingDraft.perAccountRPM}
-            onChange={(event) => setRoutingDraft((prev) => ({ ...prev, perAccountRPM: event.target.value }))}
-          />
-          <Input
-            label="每账号并发"
-            type="number"
-            min="0"
-            step="1"
-            value={routingDraft.perAccountConcurrency}
-            onChange={(event) => setRoutingDraft((prev) => ({ ...prev, perAccountConcurrency: event.target.value }))}
-          />
-          <Input
-            label="最大换号次数"
-            type="number"
-            min="0"
-            step="1"
-            value={routingDraft.maxSwitches}
-            onChange={(event) => setRoutingDraft((prev) => ({ ...prev, maxSwitches: event.target.value }))}
-          />
-          <Input
-            label="换号间隔 ms"
-            type="number"
-            min="0"
-            step="1"
-            value={routingDraft.switchDelayMS}
-            onChange={(event) => setRoutingDraft((prev) => ({ ...prev, switchDelayMS: event.target.value }))}
-          />
-          <Input
-            label="429 初始冷却 ms"
-            type="number"
-            min="0"
-            step="1"
-            value={routingDraft.rateLimitCooldownMS}
-            onChange={(event) => setRoutingDraft((prev) => ({ ...prev, rateLimitCooldownMS: event.target.value }))}
-          />
-          <Input
-            label="429 最大冷却 ms"
-            type="number"
-            min="0"
-            step="1"
-            value={routingDraft.rateLimitMaxCooldownMS}
-            onChange={(event) => setRoutingDraft((prev) => ({ ...prev, rateLimitMaxCooldownMS: event.target.value }))}
-          />
-          <Input
-            label="529 初始冷却 ms"
-            type="number"
-            min="0"
-            step="1"
-            value={routingDraft.overloadCooldownMS}
-            onChange={(event) => setRoutingDraft((prev) => ({ ...prev, overloadCooldownMS: event.target.value }))}
-          />
-          <Input
-            label="529 最大冷却 ms"
-            type="number"
-            min="0"
-            step="1"
-            value={routingDraft.overloadMaxCooldownMS}
-            onChange={(event) => setRoutingDraft((prev) => ({ ...prev, overloadMaxCooldownMS: event.target.value }))}
-          />
-          <Input
-            label="429 同号重试"
-            type="number"
-            min="0"
-            step="1"
-            value={routingDraft.sameAccountRetry429}
-            onChange={(event) => setRoutingDraft((prev) => ({ ...prev, sameAccountRetry429: event.target.value }))}
-          />
-          <Input
-            label="529 同号重试"
-            type="number"
-            min="0"
-            step="1"
-            value={routingDraft.sameAccountRetry529}
-            onChange={(event) => setRoutingDraft((prev) => ({ ...prev, sameAccountRetry529: event.target.value }))}
-          />
-          <Input
-            label="同号重试间隔 ms"
-            type="number"
-            min="0"
-            step="1"
-            value={routingDraft.sameAccountRetryDelayMS}
-            onChange={(event) => setRoutingDraft((prev) => ({ ...prev, sameAccountRetryDelayMS: event.target.value }))}
-          />
-        </div>
-        <div className={styles.routingHeader}>
-          <strong>真实缓存亲和路由</strong>
-          <span>只影响真实 Claude 选号，不影响对外虚拟缓存账本。</span>
-        </div>
-        <div className={styles.routingGrid}>
-          <ToggleSwitch
-            checked={routingDraft.cacheAffinityEnabled}
-            onChange={(cacheAffinityEnabled) => setRoutingDraft((prev) => ({ ...prev, cacheAffinityEnabled }))}
-            label="启用缓存亲和"
-          />
-          <ToggleSwitch
-            checked={routingDraft.cacheAffinityAuto}
-            onChange={(cacheAffinityAuto) => setRoutingDraft((prev) => ({ ...prev, cacheAffinityAuto }))}
-            label="自动策略"
-          />
-          <Input
-            label="最小缓存 Tokens"
-            type="number"
-            min="0"
-            step="1"
-            value={routingDraft.cacheAffinityMinTokens}
-            onChange={(event) => setRoutingDraft((prev) => ({ ...prev, cacheAffinityMinTokens: event.target.value }))}
-          />
-          <Input
-            label="亲和 lanes"
-            type="number"
-            min="1"
-            step="1"
-            value={routingDraft.cacheAffinityLanes}
-            onChange={(event) => setRoutingDraft((prev) => ({ ...prev, cacheAffinityLanes: event.target.value }))}
-          />
-          <Input
-            label="自动最大 lanes"
-            type="number"
-            min="1"
-            step="1"
-            value={routingDraft.cacheAffinityMaxLanes}
-            onChange={(event) => setRoutingDraft((prev) => ({ ...prev, cacheAffinityMaxLanes: event.target.value }))}
-          />
-          <Input
-            label="亲和等待 ms"
-            type="number"
-            min="0"
-            step="1"
-            value={routingDraft.cacheAffinityWaitMS}
-            onChange={(event) => setRoutingDraft((prev) => ({ ...prev, cacheAffinityWaitMS: event.target.value }))}
-          />
-          <Input
-            label="亲和 TTL ms"
-            type="number"
-            min="0"
-            step="1"
-            value={routingDraft.cacheAffinityTTLMS}
-            onChange={(event) => setRoutingDraft((prev) => ({ ...prev, cacheAffinityTTLMS: event.target.value }))}
-          />
-        </div>
+        <section className={styles.routingBar}>
+          <div className={styles.routingHeader}>
+            <div>
+              <span className={styles.sectionKicker}><IconShield size={15} /> 路由保护</span>
+              <h2>限速与换号</h2>
+            </div>
+          </div>
+          <div className={styles.routingGrid}>
+            <Input
+              label="每账号 RPM"
+              type="number"
+              min="0"
+              step="1"
+              value={routingDraft.perAccountRPM}
+              onChange={(event) => setRoutingDraft((prev) => ({ ...prev, perAccountRPM: event.target.value }))}
+            />
+            <Input
+              label="每账号并发"
+              type="number"
+              min="0"
+              step="1"
+              value={routingDraft.perAccountConcurrency}
+              onChange={(event) => setRoutingDraft((prev) => ({ ...prev, perAccountConcurrency: event.target.value }))}
+            />
+            <Input
+              label="最大换号次数"
+              type="number"
+              min="0"
+              step="1"
+              value={routingDraft.maxSwitches}
+              onChange={(event) => setRoutingDraft((prev) => ({ ...prev, maxSwitches: event.target.value }))}
+            />
+            <Input
+              label="换号间隔 ms"
+              type="number"
+              min="0"
+              step="1"
+              value={routingDraft.switchDelayMS}
+              onChange={(event) => setRoutingDraft((prev) => ({ ...prev, switchDelayMS: event.target.value }))}
+            />
+            <Input
+              label="429 初始冷却 ms"
+              type="number"
+              min="0"
+              step="1"
+              value={routingDraft.rateLimitCooldownMS}
+              onChange={(event) => setRoutingDraft((prev) => ({ ...prev, rateLimitCooldownMS: event.target.value }))}
+            />
+            <Input
+              label="429 最大冷却 ms"
+              type="number"
+              min="0"
+              step="1"
+              value={routingDraft.rateLimitMaxCooldownMS}
+              onChange={(event) => setRoutingDraft((prev) => ({ ...prev, rateLimitMaxCooldownMS: event.target.value }))}
+            />
+            <Input
+              label="529 初始冷却 ms"
+              type="number"
+              min="0"
+              step="1"
+              value={routingDraft.overloadCooldownMS}
+              onChange={(event) => setRoutingDraft((prev) => ({ ...prev, overloadCooldownMS: event.target.value }))}
+            />
+            <Input
+              label="529 最大冷却 ms"
+              type="number"
+              min="0"
+              step="1"
+              value={routingDraft.overloadMaxCooldownMS}
+              onChange={(event) => setRoutingDraft((prev) => ({ ...prev, overloadMaxCooldownMS: event.target.value }))}
+            />
+            <Input
+              label="429 同号重试"
+              type="number"
+              min="0"
+              step="1"
+              value={routingDraft.sameAccountRetry429}
+              onChange={(event) => setRoutingDraft((prev) => ({ ...prev, sameAccountRetry429: event.target.value }))}
+            />
+            <Input
+              label="529 同号重试"
+              type="number"
+              min="0"
+              step="1"
+              value={routingDraft.sameAccountRetry529}
+              onChange={(event) => setRoutingDraft((prev) => ({ ...prev, sameAccountRetry529: event.target.value }))}
+            />
+            <Input
+              label="同号重试间隔 ms"
+              type="number"
+              min="0"
+              step="1"
+              value={routingDraft.sameAccountRetryDelayMS}
+              onChange={(event) => setRoutingDraft((prev) => ({ ...prev, sameAccountRetryDelayMS: event.target.value }))}
+            />
+          </div>
+          <div className={styles.routingHeader}>
+            <div>
+              <span className={styles.sectionKicker}><IconSlidersHorizontal size={15} /> 真实缓存亲和</span>
+              <h2>选号策略</h2>
+            </div>
+          </div>
+          <div className={styles.routingGrid}>
+            <ToggleSwitch
+              checked={routingDraft.cacheAffinityEnabled}
+              onChange={(cacheAffinityEnabled) => setRoutingDraft((prev) => ({ ...prev, cacheAffinityEnabled }))}
+              label="启用缓存亲和"
+            />
+            <ToggleSwitch
+              checked={routingDraft.cacheAffinityAuto}
+              onChange={(cacheAffinityAuto) => setRoutingDraft((prev) => ({ ...prev, cacheAffinityAuto }))}
+              label="自动策略"
+            />
+            <Input
+              label="最小缓存 Tokens"
+              type="number"
+              min="0"
+              step="1"
+              value={routingDraft.cacheAffinityMinTokens}
+              onChange={(event) => setRoutingDraft((prev) => ({ ...prev, cacheAffinityMinTokens: event.target.value }))}
+            />
+            <Input
+              label="亲和 lanes"
+              type="number"
+              min="1"
+              step="1"
+              value={routingDraft.cacheAffinityLanes}
+              onChange={(event) => setRoutingDraft((prev) => ({ ...prev, cacheAffinityLanes: event.target.value }))}
+            />
+            <Input
+              label="自动最大 lanes"
+              type="number"
+              min="1"
+              step="1"
+              value={routingDraft.cacheAffinityMaxLanes}
+              onChange={(event) => setRoutingDraft((prev) => ({ ...prev, cacheAffinityMaxLanes: event.target.value }))}
+            />
+            <Input
+              label="亲和等待 ms"
+              type="number"
+              min="0"
+              step="1"
+              value={routingDraft.cacheAffinityWaitMS}
+              onChange={(event) => setRoutingDraft((prev) => ({ ...prev, cacheAffinityWaitMS: event.target.value }))}
+            />
+            <Input
+              label="亲和 TTL ms"
+              type="number"
+              min="0"
+              step="1"
+              value={routingDraft.cacheAffinityTTLMS}
+              onChange={(event) => setRoutingDraft((prev) => ({ ...prev, cacheAffinityTTLMS: event.target.value }))}
+            />
+          </div>
+        </section>
       </div>
 
       <div className={styles.toolbar}>
+        <div className={styles.toolbarTitle}>
+          <span className={styles.sectionKicker}><IconSearch size={15} /> 账号监控</span>
+          <strong>{formatNumber(total)} 条记录</strong>
+        </div>
         <Input
           value={query}
           onChange={(event) => {
@@ -1062,15 +1115,6 @@ export function ClaudeApiPoolPage() {
         <Select value={model} onChange={(value) => { setPage(1); setModel(value); }} options={modelOptions} />
         <Select value={status} onChange={(value) => { setPage(1); setStatus(value); }} options={statusOptions} />
         <div className={styles.toolbarActions}>
-          <Select
-            value={String(refreshIntervalMS)}
-            onChange={(value) => setRefreshIntervalMS(Number(value))}
-            options={refreshIntervalOptions}
-            ariaLabel="选择自动刷新间隔"
-          />
-          <span className={styles.refreshMeta}>
-            {autoRefreshPaused ? '自动刷新已暂停' : lastRefreshAt ? `刷新 ${lastRefreshAt.toLocaleTimeString()}` : '尚未刷新'}
-          </span>
           <Button variant="secondary" size="sm" onClick={() => batchSetDisabled(false)} disabled={selectedCount === 0 || batchUpdating} loading={batchUpdating}>
             <IconPower size={16} /> 批量启用
           </Button>
@@ -1082,9 +1126,6 @@ export function ClaudeApiPoolPage() {
           </Button>
           <Button variant="secondary" size="sm" onClick={() => exportPool('yaml')}>
             <IconDownload size={16} /> 导出
-          </Button>
-          <Button variant="secondary" size="sm" onClick={refreshAll}>
-            <IconRefreshCw size={16} /> 刷新
           </Button>
           <Button variant="secondary" size="sm" onClick={clearLedger}>
             <IconTable size={16} /> 清空账本
@@ -1146,10 +1187,15 @@ export function ClaudeApiPoolPage() {
                     <span className={statusClass(item.status)}>{statusLabel(item.status)}</span>
                   </td>
                   <td className={styles.baseUrlCell}>
-                    <div className={`${styles.truncate} ${styles.mono}`} title={item['base-url'] || '-'}>
-                      {item['base-url'] || '-'}
+                    <div className={styles.accountCell}>
+                      <span className={styles.accountIndex}>#{item.position}</span>
+                      <div>
+                        <div className={`${styles.truncate} ${styles.mono}`} title={item['base-url'] || '-'}>
+                          {item['base-url'] || '默认 Anthropic'}
+                        </div>
+                        <div className={styles.keyPreview}>{item.api_key_preview}</div>
+                      </div>
                     </div>
-                    <div className={styles.mono}>{item.api_key_preview}</div>
                   </td>
                   <td className={styles.modelsCell}>
                     <div className={styles.pillList}>
@@ -1177,12 +1223,16 @@ export function ClaudeApiPoolPage() {
                     {item.rpm_limit > 0 ? `${item.rpm_used}/${item.rpm_limit}` : item.rpm_used || '-'}
                   </td>
                   <td className={styles.metricsCell}>
-                    <div>{formatPercent(item.metrics?.success_rate)}</div>
-                    <span>{formatNumber(item.metrics?.success_count)} / {formatNumber(item.metrics?.request_count)}</span>
+                    <div className={styles.metricStack}>
+                      <strong>{formatPercent(item.metrics?.success_rate)}</strong>
+                      <span>{formatNumber(item.metrics?.success_count)} / {formatNumber(item.metrics?.request_count)}</span>
+                    </div>
                   </td>
                   <td className={styles.metricsCell}>
-                    <div>{formatPercent(item.metrics?.real_cache_ratio)}</div>
-                    <span>读 {formatNumber(item.metrics?.cache_read_tokens)} · 建 {formatNumber(item.metrics?.cache_creation_tokens)}</span>
+                    <div className={styles.metricStack}>
+                      <strong>{formatPercent(item.metrics?.real_cache_ratio)}</strong>
+                      <span>{formatTokenPair(item.metrics?.cache_read_tokens, item.metrics?.cache_creation_tokens)}</span>
+                    </div>
                   </td>
                   <td className={styles.historyCell}>
                     <div className={styles.historyStrip}>

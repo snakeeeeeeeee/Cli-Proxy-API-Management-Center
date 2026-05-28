@@ -2,125 +2,121 @@
 @use '../styles/mixins' as *;
 
 .container {
+  --pool-surface: color-mix(in srgb, var(--bg-primary) 86%, #fff);
+  --pool-surface-strong: color-mix(in srgb, var(--bg-primary) 94%, #fff);
+  --pool-muted-surface: color-mix(in srgb, var(--bg-secondary) 88%, #fff);
+  --pool-border: color-mix(in srgb, var(--border-color) 78%, transparent);
+  --pool-border-strong: color-mix(in srgb, var(--border-primary) 82%, transparent);
+  --pool-shadow: 0 18px 42px rgb(45 42 38 / 0.08);
+  --pool-inset: inset 0 1px 0 rgb(255 255 255 / 0.58);
+
   display: flex;
   flex-direction: column;
-  gap: $spacing-md;
+  gap: 18px;
   min-width: 0;
+  color: var(--text-primary);
 }
 
 .header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: $spacing-md;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) auto;
+  gap: $spacing-lg;
+  align-items: end;
+  padding: 4px 0 2px;
+
+  @include tablet {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  @include mobile {
+    grid-template-columns: 1fr;
+    gap: $spacing-md;
+  }
 }
 
 .titleBlock {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   min-width: 0;
+}
+
+.eyebrow,
+.sectionKicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  color: color-mix(in srgb, var(--text-secondary) 86%, var(--primary-color));
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1;
+  text-transform: uppercase;
 }
 
 .title {
   margin: 0;
   color: var(--text-primary);
-  font-size: 28px;
-  font-weight: 700;
+  font-size: clamp(28px, 3vw, 42px);
+  font-weight: 760;
+  line-height: 1.05;
 }
 
 .meta {
   display: flex;
   align-items: center;
-  gap: $spacing-sm;
+  gap: 8px;
   flex-wrap: wrap;
   color: var(--text-secondary);
   font-size: 13px;
-}
-
-.configBar {
-  display: flex;
-  align-items: center;
-  gap: $spacing-sm;
-  flex-wrap: wrap;
-  padding: $spacing-md;
-  border: 1px solid var(--border-color);
-  border-radius: $radius-md;
-  background: var(--bg-primary);
-}
-
-.fixedPath {
-  display: flex;
-  align-items: center;
-  gap: $spacing-sm;
-  flex: 1 1 280px;
-  min-width: min(100%, 240px);
-  color: var(--text-secondary);
-  font-size: 13px;
-
-  strong {
-    color: var(--text-primary);
-    font-weight: 700;
-  }
-}
-
-.virtualCacheBar {
-  display: flex;
-  flex-direction: column;
-  gap: $spacing-md;
-  padding: $spacing-md;
-  border: 1px solid var(--border-color);
-  border-radius: $radius-md;
-  background: var(--bg-primary);
-}
-
-.routingBar {
-  display: flex;
-  flex-direction: column;
-  gap: $spacing-md;
-  padding: $spacing-md;
-  border: 1px solid var(--border-color);
-  border-radius: $radius-md;
-  background: var(--bg-primary);
-}
-
-.routingHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: $spacing-md;
-  flex-wrap: wrap;
-
-  strong {
-    color: var(--text-primary);
-    font-size: 14px;
-  }
 
   span {
-    color: var(--text-secondary);
-    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 0 10px;
+    border: 1px solid color-mix(in srgb, var(--border-color) 70%, transparent);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--bg-primary) 58%, transparent);
   }
 }
 
-.routingGrid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(150px, 1fr));
-  gap: $spacing-sm;
-
-  @include tablet {
-    grid-template-columns: repeat(2, minmax(150px, 1fr));
-  }
+.headerActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
 
   @include mobile {
-    grid-template-columns: 1fr;
+    justify-content: flex-start;
   }
+}
+
+.refreshMeta {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--pool-border);
+  border-radius: $radius-md;
+  background: var(--pool-muted-surface);
+  color: var(--text-secondary);
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .statsGrid {
   display: grid;
   grid-template-columns: repeat(6, minmax(120px, 1fr));
-  gap: $spacing-sm;
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--pool-border-strong);
+  border-radius: $radius-md;
+  background: var(--pool-border);
+  box-shadow: var(--pool-shadow);
 
   @include tablet {
     grid-template-columns: repeat(3, minmax(120px, 1fr));
@@ -134,43 +130,193 @@
 .statItem {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 7px;
   min-width: 0;
-  padding: $spacing-md;
-  border: 1px solid var(--border-color);
+  padding: 17px 18px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--pool-surface-strong) 96%, transparent), var(--pool-surface));
+  box-shadow: var(--pool-inset);
+
+  span {
+    color: var(--text-secondary);
+    font-size: 11px;
+    font-weight: 720;
+    text-transform: uppercase;
+  }
+
+  strong {
+    min-width: 0;
+    color: var(--text-primary);
+    font-size: clamp(20px, 2.2vw, 28px);
+    font-weight: 760;
+    line-height: 1.05;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+  }
+
+  small {
+    min-height: 16px;
+    color: var(--text-tertiary);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+.configBar,
+.virtualCacheBar,
+.routingBar,
+.toolbar,
+.tablePanel {
+  border: 1px solid var(--pool-border-strong);
   border-radius: $radius-md;
-  background: var(--bg-primary);
+  background: var(--pool-surface);
+  box-shadow: var(--pool-inset), 0 10px 28px rgb(45 42 38 / 0.05);
+}
+
+.configBar {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.8fr) minmax(320px, 1.2fr);
+  gap: $spacing-lg;
+  align-items: stretch;
+  padding: $spacing-md;
+
+  @include tablet {
+    grid-template-columns: 1fr;
+  }
+
+  @include mobile {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sectionHeader,
+.virtualCacheHeader,
+.routingHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: $spacing-md;
+  min-width: 0;
+
+  h2 {
+    margin: 8px 0 0;
+    color: var(--text-primary);
+    font-size: 16px;
+    font-weight: 760;
+    line-height: 1.25;
+  }
+}
+
+.sectionHeader {
+  align-items: center;
+  padding: 2px 0;
+}
+
+.fixedPath {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  min-width: 0;
+
+  @include mobile {
+    grid-template-columns: 1fr;
+  }
+
+  > div {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    min-width: 0;
+    padding: 13px 14px;
+    border: 1px solid var(--pool-border);
+    border-radius: $radius-md;
+    background: var(--pool-muted-surface);
+  }
 
   span {
     color: var(--text-secondary);
     font-size: 12px;
+    font-weight: 650;
   }
 
   strong {
+    min-width: 0;
     color: var(--text-primary);
-    font-size: 18px;
     font-weight: 700;
-    font-variant-numeric: tabular-nums;
   }
 }
 
-.virtualCacheHeader {
+.settingsLayout {
+  display: grid;
+  grid-template-columns: minmax(340px, 0.72fr) minmax(0, 1.28fr);
+  gap: 18px;
+  align-items: start;
+
+  @include tablet {
+    grid-template-columns: 1fr;
+  }
+
+  @include mobile {
+    grid-template-columns: 1fr;
+  }
+}
+
+.virtualCacheBar,
+.routingBar {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+  padding: $spacing-md;
+}
+
+.sectionStatus {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: $spacing-md;
+  justify-content: flex-end;
+  gap: 6px;
   flex-wrap: wrap;
+  color: var(--text-secondary);
+  font-size: 12px;
 
   span {
-    color: var(--text-secondary);
-    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 0 8px;
+    border: 1px solid var(--pool-border);
+    border-radius: 999px;
+    background: var(--pool-muted-surface);
+    font-variant-numeric: tabular-nums;
   }
 }
 
 .virtualCacheGrid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(150px, 1fr));
-  gap: $spacing-sm;
+  grid-template-columns: repeat(2, minmax(150px, 1fr));
+  gap: 12px;
+
+  @include mobile {
+    grid-template-columns: 1fr;
+  }
+}
+
+.virtualCacheGrid,
+.routingGrid,
+.toolbar,
+.modalGrid,
+.testControls {
+  :global(.form-group) {
+    margin-bottom: 0;
+  }
+}
+
+.routingGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(132px, 1fr));
+  gap: 12px;
 
   @include tablet {
     grid-template-columns: repeat(2, minmax(150px, 1fr));
@@ -190,22 +336,36 @@
   > span {
     color: var(--text-secondary);
     font-size: 13px;
-    font-weight: 500;
+    font-weight: 650;
   }
 }
 
 .toolbar {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) minmax(150px, 180px) minmax(140px, 160px);
-  gap: $spacing-sm;
+  grid-template-columns: minmax(130px, 0.45fr) minmax(220px, 1fr) minmax(150px, 190px) minmax(140px, 170px);
+  gap: 10px;
   align-items: center;
-  padding: $spacing-md;
-  border: 1px solid var(--border-color);
-  border-radius: $radius-md;
-  background: var(--bg-primary);
+  padding: 12px;
+
+  @include tablet {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 
   @include mobile {
     grid-template-columns: 1fr;
+  }
+}
+
+.toolbarTitle {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+
+  strong {
+    color: var(--text-primary);
+    font-size: 15px;
+    font-variant-numeric: tabular-nums;
   }
 }
 
@@ -213,16 +373,32 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: $spacing-sm;
+  gap: 8px;
   flex-wrap: wrap;
   grid-column: 1 / -1;
+  padding-top: 2px;
+
+  @include mobile {
+    justify-content: flex-start;
+  }
 }
 
 .tablePanel {
-  border: 1px solid var(--border-color);
-  border-radius: $radius-md;
-  background: var(--bg-primary);
   overflow: hidden;
+}
+
+.batchBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $spacing-sm;
+  flex-wrap: wrap;
+  padding: 10px $spacing-md;
+  border-bottom: 1px solid var(--pool-border);
+  background: color-mix(in srgb, var(--primary-color) 8%, var(--pool-surface));
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 650;
 }
 
 .tableScroll {
@@ -231,15 +407,15 @@
 
 .table {
   width: 100%;
-  min-width: 1820px;
+  min-width: 1780px;
   border-collapse: collapse;
   table-layout: fixed;
 }
 
 .table th,
 .table td {
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--border-color);
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--pool-border);
   color: var(--text-primary);
   font-size: 13px;
   vertical-align: middle;
@@ -250,31 +426,26 @@
   position: sticky;
   top: 0;
   z-index: 1;
-  background: var(--bg-secondary);
+  background: color-mix(in srgb, var(--pool-muted-surface) 92%, var(--pool-surface));
   color: var(--text-secondary);
-  font-weight: 700;
+  font-size: 11px;
+  font-weight: 780;
+  text-transform: uppercase;
   white-space: nowrap;
+  box-shadow: inset 0 -1px 0 var(--pool-border-strong);
+}
+
+.table tbody tr {
+  background: color-mix(in srgb, var(--pool-surface) 96%, transparent);
+  transition: background-color $transition-fast;
 }
 
 .table tbody tr:hover {
-  background: var(--bg-tertiary);
-}
-
-.batchBar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: $spacing-sm;
-  flex-wrap: wrap;
-  padding: 10px $spacing-md;
-  border-bottom: 1px solid var(--border-color);
-  background: var(--bg-secondary);
-  color: var(--text-secondary);
-  font-size: 13px;
+  background: color-mix(in srgb, var(--primary-color) 7%, var(--pool-surface));
 }
 
 .selectCell {
-  width: 48px;
+  width: 46px;
   text-align: center;
 
   :global(label) {
@@ -283,17 +454,17 @@
 }
 
 .numberCell {
-  width: 72px;
+  width: 70px;
   font-variant-numeric: tabular-nums;
   color: var(--text-secondary);
 }
 
 .statusCell {
-  width: 110px;
+  width: 112px;
 }
 
 .baseUrlCell {
-  width: 250px;
+  width: 280px;
 }
 
 .modelsCell {
@@ -301,30 +472,18 @@
 }
 
 .headersCell {
-  width: 180px;
+  width: 184px;
 }
 
 .smallNumberCell {
-  width: 92px;
+  width: 94px;
+  color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
 }
 
 .metricsCell {
-  width: 130px;
+  width: 142px;
   font-variant-numeric: tabular-nums;
-
-  div {
-    color: var(--text-primary);
-    font-weight: 700;
-  }
-
-  span {
-    display: block;
-    margin-top: 3px;
-    color: var(--text-secondary);
-    font-size: 12px;
-    white-space: nowrap;
-  }
 }
 
 .historyCell {
@@ -333,26 +492,74 @@
 
   > span {
     display: block;
-    margin-top: 5px;
+    margin-top: 6px;
     color: var(--text-secondary);
     font-size: 12px;
   }
 }
 
 .actionsCell {
-  width: 260px;
+  width: 248px;
 }
 
-.refreshMeta {
+.accountCell {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+}
+
+.accountIndex {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  min-height: 28px;
+  border: 1px solid var(--pool-border);
+  border-radius: 7px;
+  background: var(--pool-muted-surface);
   color: var(--text-secondary);
+  font-family: $font-mono;
+  font-size: 11px;
+}
+
+.keyPreview {
+  margin-top: 4px;
+  color: var(--text-tertiary);
+  font-family: $font-mono;
   font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.metricStack {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+
+  strong {
+    color: var(--text-primary);
+    font-size: 16px;
+    font-weight: 780;
+    line-height: 1.1;
+  }
+
+  span {
+    color: var(--text-secondary);
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }
 
 .historyStrip {
   display: grid;
   grid-template-columns: repeat(30, 5px);
-  grid-auto-rows: 8px;
+  grid-auto-rows: 9px;
   gap: 2px;
   align-items: center;
 }
@@ -360,25 +567,25 @@
 .historyDot {
   display: block;
   width: 5px;
-  height: 8px;
-  border-radius: 2px;
+  height: 9px;
+  border-radius: 999px;
   background: var(--bg-tertiary);
 }
 
 .historyEmpty {
-  background: var(--bg-tertiary);
+  background: color-mix(in srgb, var(--border-color) 72%, transparent);
 }
 
 .historyGreen {
-  background: rgba($success-color, 0.75);
+  background: rgba($success-color, 0.82);
 }
 
 .historyYellow {
-  background: rgba($warning-color, 0.85);
+  background: rgba($warning-color, 0.72);
 }
 
 .historyRed {
-  background: rgba($error-color, 0.8);
+  background: rgba($error-color, 0.86);
 }
 
 .mono {
@@ -396,7 +603,7 @@
 .pillList {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: 5px;
   max-height: 58px;
   overflow: hidden;
 }
@@ -404,43 +611,46 @@
 .pill {
   display: inline-flex;
   align-items: center;
-  max-width: 160px;
-  padding: 2px 7px;
-  border-radius: $radius-sm;
-  border: 1px solid var(--border-color);
-  background: var(--bg-secondary);
+  max-width: 168px;
+  min-height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid var(--pool-border);
+  background: var(--pool-muted-surface);
   color: var(--text-secondary);
   font-size: 12px;
-  line-height: 18px;
+  line-height: 20px;
 }
 
 .statusBadge {
   display: inline-flex;
   align-items: center;
-  height: 24px;
-  padding: 0 9px;
-  border-radius: $radius-full;
-  border: 1px solid var(--border-color);
+  justify-content: center;
+  min-width: 64px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--pool-border);
   font-size: 12px;
-  font-weight: 700;
-  text-transform: capitalize;
+  font-weight: 760;
+  white-space: nowrap;
 }
 
 .statusEnabled {
-  color: $success-color;
-  border-color: rgba($success-color, 0.35);
-  background: rgba($success-color, 0.08);
+  color: #047857;
+  border-color: rgba($success-color, 0.34);
+  background: rgba($success-color, 0.1);
 }
 
 .statusCooling {
-  color: $warning-color;
-  border-color: rgba($warning-color, 0.35);
+  color: #9a3412;
+  border-color: rgba($warning-color, 0.3);
   background: rgba($warning-color, 0.08);
 }
 
 .statusDisabled {
   color: var(--text-secondary);
-  background: var(--bg-secondary);
+  background: var(--pool-muted-surface);
 }
 
 .rowActions {
@@ -455,6 +665,7 @@
   width: 32px;
   height: 32px;
   padding: 0;
+  border-radius: 7px;
 
   > span {
     display: inline-flex;
@@ -467,13 +678,17 @@
   justify-content: space-between;
   gap: $spacing-sm;
   flex-wrap: wrap;
-  padding: $spacing-md;
+  padding: 12px $spacing-md;
+  background: color-mix(in srgb, var(--pool-muted-surface) 64%, var(--pool-surface));
+  color: var(--text-secondary);
+  font-size: 13px;
 }
 
 .paginationControls {
   display: flex;
   align-items: center;
   gap: $spacing-sm;
+  flex-wrap: wrap;
 }
 
 .emptyState,
@@ -664,4 +879,22 @@
   justify-content: flex-end;
   gap: $spacing-sm;
   flex-wrap: wrap;
+}
+
+[data-theme='dark'] {
+  .container {
+    --pool-surface: color-mix(in srgb, var(--bg-primary) 92%, #000);
+    --pool-surface-strong: color-mix(in srgb, var(--bg-primary) 96%, #000);
+    --pool-muted-surface: color-mix(in srgb, var(--bg-secondary) 78%, #fff 2%);
+    --pool-shadow: 0 18px 42px rgb(0 0 0 / 0.18);
+    --pool-inset: inset 0 1px 0 rgb(255 255 255 / 0.05);
+  }
+
+  .statusEnabled {
+    color: #6ee7b7;
+  }
+
+  .statusCooling {
+    color: #f1b0a6;
+  }
 }
