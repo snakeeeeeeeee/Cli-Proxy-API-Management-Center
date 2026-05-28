@@ -40,6 +40,13 @@ const virtualCacheModeOptions = [
   { value: 'natural', label: '自然增长' },
   { value: 'forced', label: '强制目标' },
 ];
+const refreshIntervalOptions = [
+  { value: '0', label: '关闭自动刷新' },
+  { value: '30000', label: '30 秒' },
+  { value: '60000', label: '1 分钟' },
+  { value: '120000', label: '2 分钟' },
+  { value: '300000', label: '5 分钟' },
+];
 
 const simpleImportExample = `key-1-----workspace-a
 key-2-----workspace-b`;
@@ -173,6 +180,13 @@ type RoutingDraft = {
   sameAccountRetry429: string;
   sameAccountRetry529: string;
   sameAccountRetryDelayMS: string;
+  cacheAffinityEnabled: boolean;
+  cacheAffinityAuto: boolean;
+  cacheAffinityMinTokens: string;
+  cacheAffinityLanes: string;
+  cacheAffinityMaxLanes: string;
+  cacheAffinityWaitMS: string;
+  cacheAffinityTTLMS: string;
 };
 
 const emptyDraft: EditDraft = {
@@ -208,6 +222,13 @@ const defaultRoutingDraft: RoutingDraft = {
   sameAccountRetry429: '0',
   sameAccountRetry529: '0',
   sameAccountRetryDelayMS: '1500',
+  cacheAffinityEnabled: false,
+  cacheAffinityAuto: true,
+  cacheAffinityMinTokens: '4096',
+  cacheAffinityLanes: '2',
+  cacheAffinityMaxLanes: '4',
+  cacheAffinityWaitMS: '250',
+  cacheAffinityTTLMS: '300000',
 };
 
 const getErrorMessage = (error: unknown) =>
@@ -253,6 +274,13 @@ const configToRoutingDraft = (config: ClaudeAPIPoolConfig): RoutingDraft => {
     sameAccountRetry429: String(routing.same_account_retry_429 || 0),
     sameAccountRetry529: String(routing.same_account_retry_529 || 0),
     sameAccountRetryDelayMS: String(routing.same_account_retry_delay_ms || 1500),
+    cacheAffinityEnabled: Boolean(routing.cache_affinity_enabled),
+    cacheAffinityAuto: Boolean(routing.cache_affinity_auto),
+    cacheAffinityMinTokens: String(routing.cache_affinity_min_cache_tokens || 4096),
+    cacheAffinityLanes: String(routing.cache_affinity_lanes || 2),
+    cacheAffinityMaxLanes: String(routing.cache_affinity_max_lanes || 4),
+    cacheAffinityWaitMS: String(routing.cache_affinity_wait_ms || 250),
+    cacheAffinityTTLMS: String(routing.cache_affinity_ttl_ms || 300000),
   };
 };
 
@@ -278,12 +306,22 @@ const routingDraftToConfig = (draft: RoutingDraft) => {
     same_account_retry_429: parseNonNegativeInt(draft.sameAccountRetry429, '429 同账号重试'),
     same_account_retry_529: parseNonNegativeInt(draft.sameAccountRetry529, '529 同账号重试'),
     same_account_retry_delay_ms: parseNonNegativeInt(draft.sameAccountRetryDelayMS, '同账号重试间隔'),
+    cache_affinity_enabled: draft.cacheAffinityEnabled,
+    cache_affinity_auto: draft.cacheAffinityAuto,
+    cache_affinity_min_cache_tokens: parseNonNegativeInt(draft.cacheAffinityMinTokens, '亲和最小缓存 Tokens'),
+    cache_affinity_lanes: parseNonNegativeInt(draft.cacheAffinityLanes, '亲和 lanes'),
+    cache_affinity_max_lanes: parseNonNegativeInt(draft.cacheAffinityMaxLanes, '亲和最大 lanes'),
+    cache_affinity_wait_ms: parseNonNegativeInt(draft.cacheAffinityWaitMS, '亲和等待'),
+    cache_affinity_ttl_ms: parseNonNegativeInt(draft.cacheAffinityTTLMS, '亲和 TTL'),
   };
   if (config.rate_limit_max_cooldown_ms > 0 && config.rate_limit_max_cooldown_ms < config.rate_limit_cooldown_ms) {
     throw new Error('429 最大冷却不能小于 429 初始冷却');
   }
   if (config.overload_max_cooldown_ms > 0 && config.overload_max_cooldown_ms < config.overload_cooldown_ms) {
     throw new Error('529 最大冷却不能小于 529 初始冷却');
+  }
+  if (config.cache_affinity_max_lanes > 0 && config.cache_affinity_max_lanes < config.cache_affinity_lanes) {
+    throw new Error('亲和最大 lanes 不能小于亲和 lanes');
   }
   return config;
 };
@@ -370,6 +408,14 @@ const statusLabel = (status: string) => {
 };
 
 const formatPercent = (value?: number) => `${Math.round(((value || 0) * 100) * 10) / 10}%`;
+const formatNumber = (value?: number) => new Intl.NumberFormat('zh-CN').format(value || 0);
+const formatMs = (value?: number) => (value && value > 0 ? `${Math.round(value)}ms` : '-');
+const historyClass = (state?: string) => {
+  if (state === 'green') return styles.historyGreen;
+  if (state === 'yellow') return styles.historyYellow;
+  if (state === 'red') return styles.historyRed;
+  return styles.historyEmpty;
+};
 
 export function ClaudeApiPoolPage() {
   const { showNotification, showConfirmation } = useNotificationStore();
@@ -402,6 +448,8 @@ export function ClaudeApiPoolPage() {
   const [testResult, setTestResult] = useState<ClaudeAPIPoolItemTestResult | null>(null);
   const [testError, setTestError] = useState('');
   const [testing, setTesting] = useState(false);
+  const [refreshIntervalMS, setRefreshIntervalMS] = useState(30000);
+  const [lastRefreshAt, setLastRefreshAt] = useState<Date | null>(null);
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const selectedItems = useMemo(
@@ -411,6 +459,8 @@ export function ClaudeApiPoolPage() {
   const selectedCount = selectedItems.length;
   const allPageSelected = items.length > 0 && items.every((item) => selectedPositions.has(item.position));
   const somePageSelected = items.some((item) => selectedPositions.has(item.position));
+  const runtimeStats = config['runtime-stats'];
+  const autoRefreshPaused = Boolean(editing || importOpen || testingItem);
   const modelOptions = useMemo(() => {
     const names = new Set<string>();
     items.forEach((item) => {
@@ -454,6 +504,7 @@ export function ClaudeApiPoolPage() {
       setItems(result.items || []);
       setTotal(result.total || 0);
       setPage(result.page || page);
+      setLastRefreshAt(new Date());
       setSelectedPositions((prev) => {
         const visible = new Set((result.items || []).map((item) => item.position));
         const next = new Set(Array.from(prev).filter((position) => visible.has(position)));
@@ -474,6 +525,14 @@ export function ClaudeApiPoolPage() {
     void loadItems();
   }, [loadItems]);
 
+  useEffect(() => {
+    if (!refreshIntervalMS || autoRefreshPaused) return undefined;
+    const timer = window.setInterval(() => {
+      void Promise.all([loadConfig(), loadItems()]).catch((err) => setError(getErrorMessage(err)));
+    }, refreshIntervalMS);
+    return () => window.clearInterval(timer);
+  }, [autoRefreshPaused, refreshIntervalMS, loadConfig, loadItems]);
+
   const saveConfig = async () => {
     setSavingConfig(true);
     try {
@@ -488,6 +547,7 @@ export function ClaudeApiPoolPage() {
         'virtual-cache': result['virtual-cache'] || virtualCache,
         routing: result.routing || routing,
         'reuse-stats': result['reuse-stats'],
+        'runtime-stats': result['runtime-stats'],
       };
       setConfig(nextConfig);
       setVirtualCacheDraft(configToVirtualCacheDraft(nextConfig));
@@ -501,9 +561,9 @@ export function ClaudeApiPoolPage() {
     }
   };
 
-  const refreshAll = async () => {
+  const refreshAll = useCallback(async () => {
     await Promise.all([loadConfig(), loadItems()]);
-  };
+  }, [loadConfig, loadItems]);
 
   const openEdit = (item: ClaudeAPIPoolItem) => {
     setEditing(item);
@@ -751,6 +811,33 @@ export function ClaudeApiPoolPage() {
         </Button>
       </div>
 
+      <div className={styles.statsGrid}>
+        <div className={styles.statItem}>
+          <span>可用账号</span>
+          <strong>{formatNumber(runtimeStats?.available_accounts)} / {formatNumber(runtimeStats?.account_count || total)}</strong>
+        </div>
+        <div className={styles.statItem}>
+          <span>全局并发</span>
+          <strong>{formatNumber(runtimeStats?.in_flight)}</strong>
+        </div>
+        <div className={styles.statItem}>
+          <span>RPM</span>
+          <strong>{formatNumber(runtimeStats?.rpm_used)}{runtimeStats?.rpm_limit ? ` / ${formatNumber(runtimeStats.rpm_limit)}` : ''}</strong>
+        </div>
+        <div className={styles.statItem}>
+          <span>真实缓存率</span>
+          <strong>{formatPercent(runtimeStats?.real_cache_ratio)}</strong>
+        </div>
+        <div className={styles.statItem}>
+          <span>亲和 Key / lanes</span>
+          <strong>{formatNumber(runtimeStats?.active_affinity_keys)} / {formatNumber(runtimeStats?.warm_lanes)}</strong>
+        </div>
+        <div className={styles.statItem}>
+          <span>成功率</span>
+          <strong>{formatPercent(runtimeStats?.success_rate)}</strong>
+        </div>
+      </div>
+
       <div className={styles.virtualCacheBar}>
         <div className={styles.virtualCacheHeader}>
           <ToggleSwitch
@@ -904,6 +991,62 @@ export function ClaudeApiPoolPage() {
             onChange={(event) => setRoutingDraft((prev) => ({ ...prev, sameAccountRetryDelayMS: event.target.value }))}
           />
         </div>
+        <div className={styles.routingHeader}>
+          <strong>真实缓存亲和路由</strong>
+          <span>只影响真实 Claude 选号，不影响对外虚拟缓存账本。</span>
+        </div>
+        <div className={styles.routingGrid}>
+          <ToggleSwitch
+            checked={routingDraft.cacheAffinityEnabled}
+            onChange={(cacheAffinityEnabled) => setRoutingDraft((prev) => ({ ...prev, cacheAffinityEnabled }))}
+            label="启用缓存亲和"
+          />
+          <ToggleSwitch
+            checked={routingDraft.cacheAffinityAuto}
+            onChange={(cacheAffinityAuto) => setRoutingDraft((prev) => ({ ...prev, cacheAffinityAuto }))}
+            label="自动策略"
+          />
+          <Input
+            label="最小缓存 Tokens"
+            type="number"
+            min="0"
+            step="1"
+            value={routingDraft.cacheAffinityMinTokens}
+            onChange={(event) => setRoutingDraft((prev) => ({ ...prev, cacheAffinityMinTokens: event.target.value }))}
+          />
+          <Input
+            label="亲和 lanes"
+            type="number"
+            min="1"
+            step="1"
+            value={routingDraft.cacheAffinityLanes}
+            onChange={(event) => setRoutingDraft((prev) => ({ ...prev, cacheAffinityLanes: event.target.value }))}
+          />
+          <Input
+            label="自动最大 lanes"
+            type="number"
+            min="1"
+            step="1"
+            value={routingDraft.cacheAffinityMaxLanes}
+            onChange={(event) => setRoutingDraft((prev) => ({ ...prev, cacheAffinityMaxLanes: event.target.value }))}
+          />
+          <Input
+            label="亲和等待 ms"
+            type="number"
+            min="0"
+            step="1"
+            value={routingDraft.cacheAffinityWaitMS}
+            onChange={(event) => setRoutingDraft((prev) => ({ ...prev, cacheAffinityWaitMS: event.target.value }))}
+          />
+          <Input
+            label="亲和 TTL ms"
+            type="number"
+            min="0"
+            step="1"
+            value={routingDraft.cacheAffinityTTLMS}
+            onChange={(event) => setRoutingDraft((prev) => ({ ...prev, cacheAffinityTTLMS: event.target.value }))}
+          />
+        </div>
       </div>
 
       <div className={styles.toolbar}>
@@ -919,6 +1062,15 @@ export function ClaudeApiPoolPage() {
         <Select value={model} onChange={(value) => { setPage(1); setModel(value); }} options={modelOptions} />
         <Select value={status} onChange={(value) => { setPage(1); setStatus(value); }} options={statusOptions} />
         <div className={styles.toolbarActions}>
+          <Select
+            value={String(refreshIntervalMS)}
+            onChange={(value) => setRefreshIntervalMS(Number(value))}
+            options={refreshIntervalOptions}
+            ariaLabel="选择自动刷新间隔"
+          />
+          <span className={styles.refreshMeta}>
+            {autoRefreshPaused ? '自动刷新已暂停' : lastRefreshAt ? `刷新 ${lastRefreshAt.toLocaleTimeString()}` : '尚未刷新'}
+          </span>
           <Button variant="secondary" size="sm" onClick={() => batchSetDisabled(false)} disabled={selectedCount === 0 || batchUpdating} loading={batchUpdating}>
             <IconPower size={16} /> 批量启用
           </Button>
@@ -969,6 +1121,9 @@ export function ClaudeApiPoolPage() {
                 <th className={styles.smallNumberCell}>优先级</th>
                 <th className={styles.smallNumberCell}>进行中</th>
                 <th className={styles.smallNumberCell}>RPM</th>
+                <th className={styles.metricsCell}>成功率</th>
+                <th className={styles.metricsCell}>真实缓存</th>
+                <th className={styles.historyCell}>近 60 分钟</th>
                 <th className={styles.smallNumberCell}>冷却</th>
                 <th className={styles.smallNumberCell}>热 Key</th>
                 <th className={styles.actionsCell}>操作</th>
@@ -1020,6 +1175,26 @@ export function ClaudeApiPoolPage() {
                   <td className={styles.smallNumberCell}>{item.in_flight}</td>
                   <td className={styles.smallNumberCell}>
                     {item.rpm_limit > 0 ? `${item.rpm_used}/${item.rpm_limit}` : item.rpm_used || '-'}
+                  </td>
+                  <td className={styles.metricsCell}>
+                    <div>{formatPercent(item.metrics?.success_rate)}</div>
+                    <span>{formatNumber(item.metrics?.success_count)} / {formatNumber(item.metrics?.request_count)}</span>
+                  </td>
+                  <td className={styles.metricsCell}>
+                    <div>{formatPercent(item.metrics?.real_cache_ratio)}</div>
+                    <span>读 {formatNumber(item.metrics?.cache_read_tokens)} · 建 {formatNumber(item.metrics?.cache_creation_tokens)}</span>
+                  </td>
+                  <td className={styles.historyCell}>
+                    <div className={styles.historyStrip}>
+                      {(item.metrics?.history || []).map((bucket, index) => (
+                        <span
+                          key={`${bucket.time}:${index}`}
+                          className={`${styles.historyDot} ${historyClass(bucket.state)}`}
+                          title={`${bucket.time} 请求 ${bucket.requests} 成功 ${bucket.success} 失败 ${bucket.failures}`}
+                        />
+                      ))}
+                    </div>
+                    <span>{formatMs(item.metrics?.avg_latency_ms)}</span>
                   </td>
                   <td className={styles.smallNumberCell} title={item.cooling_until || undefined}>
                     {item.cooling ? '是' : '否'}

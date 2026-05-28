@@ -117,6 +117,43 @@
   }
 }
 
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(120px, 1fr));
+  gap: $spacing-sm;
+
+  @include tablet {
+    grid-template-columns: repeat(3, minmax(120px, 1fr));
+  }
+
+  @include mobile {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.statItem {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: $spacing-md;
+  border: 1px solid var(--border-color);
+  border-radius: $radius-md;
+  background: var(--bg-primary);
+
+  span {
+    color: var(--text-secondary);
+    font-size: 12px;
+  }
+
+  strong {
+    color: var(--text-primary);
+    font-size: 18px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
 .virtualCacheHeader {
   display: flex;
   align-items: center;
@@ -194,7 +231,7 @@
 
 .table {
   width: 100%;
-  min-width: 1320px;
+  min-width: 1820px;
   border-collapse: collapse;
   table-layout: fixed;
 }
@@ -272,8 +309,76 @@
   font-variant-numeric: tabular-nums;
 }
 
+.metricsCell {
+  width: 130px;
+  font-variant-numeric: tabular-nums;
+
+  div {
+    color: var(--text-primary);
+    font-weight: 700;
+  }
+
+  span {
+    display: block;
+    margin-top: 3px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    white-space: nowrap;
+  }
+}
+
+.historyCell {
+  width: 240px;
+  font-variant-numeric: tabular-nums;
+
+  > span {
+    display: block;
+    margin-top: 5px;
+    color: var(--text-secondary);
+    font-size: 12px;
+  }
+}
+
 .actionsCell {
   width: 260px;
+}
+
+.refreshMeta {
+  color: var(--text-secondary);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.historyStrip {
+  display: grid;
+  grid-template-columns: repeat(30, 5px);
+  grid-auto-rows: 8px;
+  gap: 2px;
+  align-items: center;
+}
+
+.historyDot {
+  display: block;
+  width: 5px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--bg-tertiary);
+}
+
+.historyEmpty {
+  background: var(--bg-tertiary);
+}
+
+.historyGreen {
+  background: rgba($success-color, 0.75);
+}
+
+.historyYellow {
+  background: rgba($warning-color, 0.85);
+}
+
+.historyRed {
+  background: rgba($error-color, 0.8);
 }
 
 .mono {

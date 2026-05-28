@@ -35,6 +35,7 @@ export const claudeApiPoolApi = {
       'virtual-cache'?: ClaudeAPIPoolConfig['virtual-cache'];
       routing?: ClaudeAPIPoolConfig['routing'];
       'reuse-stats'?: ClaudeAPIPoolConfig['reuse-stats'];
+      'runtime-stats'?: ClaudeAPIPoolConfig['runtime-stats'];
     }>('/claude-api-pool/config', {
       enabled: config.enabled,
       'virtual-cache': config['virtual-cache'],

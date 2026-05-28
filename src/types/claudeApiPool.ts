@@ -8,6 +8,7 @@ export interface ClaudeAPIPoolConfig {
   'virtual-cache'?: ClaudeAPIPoolVirtualCacheConfig;
   routing?: ClaudeAPIPoolRoutingConfig;
   'reuse-stats'?: ClaudeAPIPoolVirtualCacheReuseStats;
+  'runtime-stats'?: ClaudeAPIPoolRuntimeStats;
 }
 
 export interface ClaudeAPIPoolVirtualCacheConfig {
@@ -47,6 +48,65 @@ export interface ClaudeAPIPoolRoutingConfig {
   same_account_retry_429: number;
   same_account_retry_529: number;
   same_account_retry_delay_ms: number;
+  cache_affinity_enabled: boolean;
+  cache_affinity_auto: boolean;
+  cache_affinity_min_cache_tokens: number;
+  cache_affinity_lanes: number;
+  cache_affinity_max_lanes: number;
+  cache_affinity_wait_ms: number;
+  cache_affinity_ttl_ms: number;
+}
+
+export interface ClaudeAPIPoolRuntimeStats {
+  window_seconds: number;
+  account_count: number;
+  available_accounts: number;
+  cooling_accounts: number;
+  in_flight: number;
+  rpm_used: number;
+  rpm_limit: number;
+  active_affinity_keys: number;
+  warm_lanes: number;
+  request_count: number;
+  success_count: number;
+  failure_count: number;
+  success_rate: number;
+  real_cache_ratio: number;
+  cache_read_tokens: number;
+  cache_creation_tokens: number;
+  input_tokens: number;
+  output_tokens: number;
+}
+
+export interface ClaudeAPIPoolMetricsBucket {
+  time: string;
+  requests: number;
+  success: number;
+  failures: number;
+  status_429: number;
+  status_529: number;
+  status_5xx: number;
+  success_rate: number;
+  state: 'empty' | 'green' | 'yellow' | 'red' | string;
+}
+
+export interface ClaudeAPIPoolAccountMetrics {
+  window_seconds: number;
+  request_count: number;
+  success_count: number;
+  failure_count: number;
+  success_rate: number;
+  rpm_1m: number;
+  status_429: number;
+  status_529: number;
+  status_5xx: number;
+  avg_latency_ms: number;
+  input_tokens: number;
+  output_tokens: number;
+  cache_read_tokens: number;
+  cache_creation_tokens: number;
+  real_cache_ratio: number;
+  history: ClaudeAPIPoolMetricsBucket[];
 }
 
 export interface ClaudeAPIPoolDefaults {
@@ -91,6 +151,7 @@ export interface ClaudeAPIPoolItem {
   cooling: boolean;
   cooling_until?: string;
   warm_keys: number;
+  metrics?: ClaudeAPIPoolAccountMetrics;
 }
 
 export interface ClaudeAPIPoolListParams {
