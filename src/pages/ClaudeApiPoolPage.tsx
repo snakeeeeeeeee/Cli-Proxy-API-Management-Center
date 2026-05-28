@@ -1,13 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/Button';
+import { HeaderInputList } from '@/components/ui/HeaderInputList';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
+import { ModelInputList } from '@/components/ui/ModelInputList';
+import { entriesToModels, modelsToEntries, type ModelEntry } from '@/components/ui/modelInputListUtils';
 import { SelectionCheckbox } from '@/components/ui/SelectionCheckbox';
 import { Select } from '@/components/ui/Select';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import {
   IconChartLine,
   IconDownload,
+  IconFileText,
+  IconKey,
+  IconModelCluster,
   IconPencil,
   IconPlay,
   IconPower,
@@ -23,6 +29,7 @@ import {
 import { claudeApiPoolApi } from '@/services/api';
 import { useNotificationStore } from '@/stores';
 import { downloadBlob } from '@/utils/download';
+import { buildHeaderObject, headersToEntries, type HeaderEntry } from '@/utils/headers';
 import type {
   ClaudeAPIPoolConfig,
   ClaudeAPIPoolImportPreview,
@@ -154,6 +161,7 @@ const jsonImportExample = `{
 
 type EditDraft = {
   apiKey: string;
+  workspaceId: string;
   baseUrl: string;
   proxyUrl: string;
   priority: string;
@@ -163,6 +171,15 @@ type EditDraft = {
   headersText: string;
   modelsText: string;
   excludedModelsText: string;
+};
+
+type PoolDefaultsDraft = {
+  baseUrl: string;
+  proxyUrl: string;
+  priority: string;
+  disableCooling: boolean;
+  headers: HeaderEntry[];
+  models: ModelEntry[];
 };
 
 type VirtualCacheDraft = {
@@ -196,6 +213,7 @@ type RoutingDraft = {
 
 const emptyDraft: EditDraft = {
   apiKey: '',
+  workspaceId: '',
   baseUrl: '',
   proxyUrl: '',
   priority: '',
@@ -205,6 +223,15 @@ const emptyDraft: EditDraft = {
   headersText: '',
   modelsText: '',
   excludedModelsText: '',
+};
+
+const emptyPoolDefaultsDraft: PoolDefaultsDraft = {
+  baseUrl: '',
+  proxyUrl: '',
+  priority: '',
+  disableCooling: false,
+  headers: [],
+  models: [{ name: '', alias: '' }],
 };
 
 const defaultVirtualCacheDraft: VirtualCacheDraft = {
@@ -289,6 +316,18 @@ const configToRoutingDraft = (config: ClaudeAPIPoolConfig): RoutingDraft => {
   };
 };
 
+const configToPoolDefaultsDraft = (config: ClaudeAPIPoolConfig): PoolDefaultsDraft => {
+  const defaults = config.defaults || {};
+  return {
+    baseUrl: defaults['base-url'] || '',
+    proxyUrl: defaults['proxy-url'] || '',
+    priority: defaults.priority === undefined ? '' : String(defaults.priority),
+    disableCooling: Boolean(defaults['disable-cooling']),
+    headers: headersToEntries(defaults.headers),
+    models: modelsToEntries(config.models),
+  };
+};
+
 const parseNonNegativeInt = (value: string, label: string) => {
   const normalized = value.trim() || '0';
   const parsed = Number(normalized);
@@ -331,6 +370,26 @@ const routingDraftToConfig = (draft: RoutingDraft) => {
   return config;
 };
 
+const poolDefaultsDraftToConfig = (draft: PoolDefaultsDraft): Pick<ClaudeAPIPoolConfig, 'defaults' | 'models'> => {
+  const defaults: NonNullable<ClaudeAPIPoolConfig['defaults']> = {};
+  if (draft.baseUrl.trim()) defaults['base-url'] = draft.baseUrl.trim();
+  if (draft.proxyUrl.trim()) defaults['proxy-url'] = draft.proxyUrl.trim();
+  if (draft.priority.trim()) {
+    const priority = Number(draft.priority);
+    if (!Number.isFinite(priority) || !Number.isInteger(priority)) {
+      throw new Error('公共优先级必须是整数');
+    }
+    defaults.priority = priority;
+  }
+  if (draft.disableCooling) defaults['disable-cooling'] = true;
+  const headers = buildHeaderObject(draft.headers);
+  if (Object.keys(headers).length) defaults.headers = headers;
+  return {
+    defaults,
+    models: entriesToModels(draft.models),
+  };
+};
+
 const virtualCacheDraftToConfig = (draft: VirtualCacheDraft) => {
   const hitRatePercent = Number(draft.hitRate.trim() || '0');
   if (!Number.isFinite(hitRatePercent) || hitRatePercent < 0 || hitRatePercent > 100) {
@@ -361,15 +420,23 @@ const modelLabel = (entry: { name?: string; alias?: string }) => {
   return `${entry.alias} (${entry.name})`;
 };
 
+const withoutWorkspaceHeader = (headers?: Record<string, string>) => {
+  if (!headers) return undefined;
+  const next = { ...headers };
+  delete next['anthropic-workspace-id'];
+  return next;
+};
+
 const itemToDraft = (item: ClaudeAPIPoolItem): EditDraft => ({
   apiKey: item.raw?.['api-key'] || '',
+  workspaceId: item.raw?.headers?.['anthropic-workspace-id'] || '',
   baseUrl: item.raw?.['base-url'] || '',
   proxyUrl: item.raw?.['proxy-url'] || '',
   priority: item.raw?.priority === undefined ? '' : String(item.raw.priority),
   disableCooling: Boolean(item.raw?.['disable-cooling']),
   disabled: Boolean(item.raw?.disabled),
   experimentalCCHSigning: Boolean(item.raw?.['experimental-cch-signing']),
-  headersText: formatJson(item.raw?.headers),
+  headersText: formatJson(withoutWorkspaceHeader(item.raw?.headers)),
   modelsText: formatJson(item.raw?.models),
   excludedModelsText: formatJson(item.raw?.['excluded-models']),
 });
@@ -391,6 +458,7 @@ const draftToItem = (draft: EditDraft): ClaudeAPIPoolItemRaw => {
   if (draft.disabled) value.disabled = true;
   if (draft.experimentalCCHSigning) value['experimental-cch-signing'] = true;
   const headers = parseJsonField<Record<string, string>>(draft.headersText, {});
+  if (draft.workspaceId.trim()) headers['anthropic-workspace-id'] = draft.workspaceId.trim();
   if (Object.keys(headers).length) value.headers = headers;
   const models = parseJsonField<ClaudeAPIPoolItemRaw['models']>(draft.modelsText, []);
   if (models && models.length) value.models = models;
@@ -427,6 +495,7 @@ const historyClass = (state?: string) => {
 export function ClaudeApiPoolPage() {
   const { showNotification, showConfirmation } = useNotificationStore();
   const [config, setConfig] = useState<ClaudeAPIPoolConfig>({ enabled: false });
+  const [poolDefaultsDraft, setPoolDefaultsDraft] = useState<PoolDefaultsDraft>(emptyPoolDefaultsDraft);
   const [virtualCacheDraft, setVirtualCacheDraft] = useState<VirtualCacheDraft>(defaultVirtualCacheDraft);
   const [routingDraft, setRoutingDraft] = useState<RoutingDraft>(defaultRoutingDraft);
   const [items, setItems] = useState<ClaudeAPIPoolItem[]>([]);
@@ -440,6 +509,7 @@ export function ClaudeApiPoolPage() {
   const [savingConfig, setSavingConfig] = useState(false);
   const [error, setError] = useState('');
   const [editing, setEditing] = useState<ClaudeAPIPoolItem | null>(null);
+  const [creatingItem, setCreatingItem] = useState(false);
   const [draft, setDraft] = useState<EditDraft>(emptyDraft);
   const [savingItem, setSavingItem] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -468,7 +538,7 @@ export function ClaudeApiPoolPage() {
   const somePageSelected = items.some((item) => selectedPositions.has(item.position));
   const runtimeStats = config['runtime-stats'];
   const runtimeTotalAccounts = runtimeStats?.account_count || total;
-  const autoRefreshPaused = Boolean(editing || importOpen || testingItem);
+  const autoRefreshPaused = Boolean(editing || creatingItem || importOpen || testingItem);
   const modelOptions = useMemo(() => {
     const names = new Set<string>();
     items.forEach((item) => {
@@ -494,6 +564,7 @@ export function ClaudeApiPoolPage() {
   const loadConfig = useCallback(async () => {
     const nextConfig = await claudeApiPoolApi.getConfig();
     setConfig(nextConfig);
+    setPoolDefaultsDraft(configToPoolDefaultsDraft(nextConfig));
     setVirtualCacheDraft(configToVirtualCacheDraft(nextConfig));
     setRoutingDraft(configToRoutingDraft(nextConfig));
   }, []);
@@ -544,20 +615,30 @@ export function ClaudeApiPoolPage() {
   const saveConfig = async () => {
     setSavingConfig(true);
     try {
+      const poolDefaults = poolDefaultsDraftToConfig(poolDefaultsDraft);
       const virtualCache = virtualCacheDraftToConfig(virtualCacheDraft);
       const routing = routingDraftToConfig(routingDraft);
-      const result = await claudeApiPoolApi.updateConfig({ enabled: config.enabled, 'virtual-cache': virtualCache, routing });
+      const result = await claudeApiPoolApi.updateConfig({
+        enabled: config.enabled,
+        defaults: poolDefaults.defaults,
+        models: poolDefaults.models,
+        'virtual-cache': virtualCache,
+        routing,
+      });
       const nextConfig = {
         enabled: result.enabled,
         path: result.path || config.path,
         import_path: result.import_path || config.import_path,
         storage: result.storage || config.storage,
+        defaults: result.defaults || poolDefaults.defaults,
+        models: result.models || poolDefaults.models,
         'virtual-cache': result['virtual-cache'] || virtualCache,
         routing: result.routing || routing,
         'reuse-stats': result['reuse-stats'],
         'runtime-stats': result['runtime-stats'],
       };
       setConfig(nextConfig);
+      setPoolDefaultsDraft(configToPoolDefaultsDraft(nextConfig));
       setVirtualCacheDraft(configToVirtualCacheDraft(nextConfig));
       setRoutingDraft(configToRoutingDraft(nextConfig));
       showNotification('Claude API 池配置已保存', 'success');
@@ -578,19 +659,30 @@ export function ClaudeApiPoolPage() {
     setDraft(itemToDraft(item));
   };
 
+  const openCreate = () => {
+    setCreatingItem(true);
+    setDraft(emptyDraft);
+  };
+
   const closeEdit = () => {
     if (savingItem) return;
     setEditing(null);
+    setCreatingItem(false);
     setDraft(emptyDraft);
   };
 
   const saveItem = async () => {
-    if (!editing) return;
+    if (!editing && !creatingItem) return;
     setSavingItem(true);
     try {
       const value = draftToItem(draft);
-      await claudeApiPoolApi.updateItem(editing.position, editing.item_hash, value);
-      showNotification('账号配置已保存', 'success');
+      if (editing) {
+        await claudeApiPoolApi.updateItem(editing.position, editing.item_hash, value);
+        showNotification('账号配置已保存', 'success');
+      } else {
+        await claudeApiPoolApi.createItem(value);
+        showNotification('账号已新增', 'success');
+      }
       closeEdit();
       await loadItems();
     } catch (err) {
@@ -857,7 +949,8 @@ export function ClaudeApiPoolPage() {
         <div className={styles.sectionHeader}>
           <div>
             <span className={styles.sectionKicker}><IconSettings size={15} /> 基础配置</span>
-            <h2>运行状态</h2>
+            <h2>公共配置</h2>
+            <p>这些值会作为新增账号和未单独覆盖账号的默认值。</p>
           </div>
           <ToggleSwitch
             checked={config.enabled}
@@ -873,6 +966,72 @@ export function ClaudeApiPoolPage() {
           <div>
             <span>YAML 导入格式</span>
             <strong className={styles.mono}>{config.import_path || poolImportFileName}</strong>
+          </div>
+        </div>
+        <div className={styles.publicConfigPanel}>
+          <div className={styles.publicConfigGrid}>
+            <Input
+              label="公共 Base URL"
+              value={poolDefaultsDraft.baseUrl}
+              onChange={(event) => setPoolDefaultsDraft((prev) => ({ ...prev, baseUrl: event.target.value }))}
+              placeholder="留空使用默认 Anthropic"
+            />
+            <Input
+              label="公共代理 URL"
+              value={poolDefaultsDraft.proxyUrl}
+              onChange={(event) => setPoolDefaultsDraft((prev) => ({ ...prev, proxyUrl: event.target.value }))}
+              placeholder="留空不走独立代理"
+            />
+            <Input
+              label="公共优先级"
+              type="number"
+              step="1"
+              value={poolDefaultsDraft.priority}
+              onChange={(event) => setPoolDefaultsDraft((prev) => ({ ...prev, priority: event.target.value }))}
+              placeholder="0"
+            />
+            <div className={styles.publicToggleField}>
+              <ToggleSwitch
+                checked={poolDefaultsDraft.disableCooling}
+                onChange={(disableCooling) => setPoolDefaultsDraft((prev) => ({ ...prev, disableCooling }))}
+                label="默认禁用冷却"
+              />
+              <span>账号未覆盖时继承这个冷却策略。</span>
+            </div>
+          </div>
+
+          <div className={styles.publicConfigColumns}>
+            <div className={styles.publicConfigList}>
+              <div className={styles.publicConfigListHeader}>
+                <span><IconFileText size={15} /> 公共 Headers</span>
+                <small>例如 anthropic-version 或自定义路由头。</small>
+              </div>
+              <HeaderInputList
+                entries={poolDefaultsDraft.headers}
+                onChange={(headers) => setPoolDefaultsDraft((prev) => ({ ...prev, headers }))}
+                addLabel="添加 Header"
+                keyPlaceholder="header-name"
+                valuePlaceholder="value"
+                removeButtonTitle="删除 Header"
+                removeButtonAriaLabel="删除 Header"
+              />
+            </div>
+
+            <div className={styles.publicConfigList}>
+              <div className={styles.publicConfigListHeader}>
+                <span><IconModelCluster size={15} /> 公共模型</span>
+                <small>新增账号默认继承这里的模型列表。</small>
+              </div>
+              <ModelInputList
+                entries={poolDefaultsDraft.models}
+                onChange={(models) => setPoolDefaultsDraft((prev) => ({ ...prev, models }))}
+                addLabel="添加模型"
+                namePlaceholder="claude-opus-4-8"
+                aliasPlaceholder="alias，可留空"
+                removeButtonTitle="删除模型"
+                removeButtonAriaLabel="删除模型"
+              />
+            </div>
           </div>
         </div>
       </section>
@@ -1115,6 +1274,9 @@ export function ClaudeApiPoolPage() {
         <Select value={model} onChange={(value) => { setPage(1); setModel(value); }} options={modelOptions} />
         <Select value={status} onChange={(value) => { setPage(1); setStatus(value); }} options={statusOptions} />
         <div className={styles.toolbarActions}>
+          <Button variant="secondary" size="sm" onClick={openCreate}>
+            <IconKey size={16} /> 新增账号
+          </Button>
           <Button variant="secondary" size="sm" onClick={() => batchSetDisabled(false)} disabled={selectedCount === 0 || batchUpdating} loading={batchUpdating}>
             <IconPower size={16} /> 批量启用
           </Button>
@@ -1290,8 +1452,8 @@ export function ClaudeApiPoolPage() {
       </div>
 
       <Modal
-        open={Boolean(editing)}
-        title={editing ? `编辑池账号 #${editing.position}` : '编辑池账号'}
+        open={Boolean(editing) || creatingItem}
+        title={editing ? `编辑池账号 #${editing.position}` : '新增池账号'}
         onClose={closeEdit}
         width={760}
         footer={
@@ -1303,19 +1465,47 @@ export function ClaudeApiPoolPage() {
       >
         <div className={styles.modalGrid}>
           <Input label="API key" value={draft.apiKey} onChange={(event) => setDraft((prev) => ({ ...prev, apiKey: event.target.value }))} className={styles.mono} />
-          <Input label="Base URL" value={draft.baseUrl} onChange={(event) => setDraft((prev) => ({ ...prev, baseUrl: event.target.value }))} />
-          <Input label="代理 URL" value={draft.proxyUrl} onChange={(event) => setDraft((prev) => ({ ...prev, proxyUrl: event.target.value }))} />
-          <Input label="优先级" value={draft.priority} onChange={(event) => setDraft((prev) => ({ ...prev, priority: event.target.value }))} />
+          <Input
+            label="Workspace ID"
+            value={draft.workspaceId}
+            onChange={(event) => setDraft((prev) => ({ ...prev, workspaceId: event.target.value }))}
+            placeholder="wrkspc_..."
+            hint="会写入 anthropic-workspace-id；留空则不设置。"
+          />
+          <Input
+            label="Base URL"
+            value={draft.baseUrl}
+            onChange={(event) => setDraft((prev) => ({ ...prev, baseUrl: event.target.value }))}
+            placeholder={poolDefaultsDraft.baseUrl || '继承公共 Base URL'}
+            hint="留空继承公共配置。"
+          />
+          <Input
+            label="代理 URL"
+            value={draft.proxyUrl}
+            onChange={(event) => setDraft((prev) => ({ ...prev, proxyUrl: event.target.value }))}
+            placeholder={poolDefaultsDraft.proxyUrl || '继承公共代理'}
+            hint="留空继承公共配置。"
+          />
+          <Input
+            label="优先级"
+            type="number"
+            step="1"
+            value={draft.priority}
+            onChange={(event) => setDraft((prev) => ({ ...prev, priority: event.target.value }))}
+            placeholder={poolDefaultsDraft.priority || '继承公共优先级'}
+          />
           <ToggleSwitch checked={draft.disableCooling} onChange={(value) => setDraft((prev) => ({ ...prev, disableCooling: value }))} label="禁用冷却" />
           <ToggleSwitch checked={draft.disabled} onChange={(value) => setDraft((prev) => ({ ...prev, disabled: value }))} label="禁用账号" />
           <ToggleSwitch checked={draft.experimentalCCHSigning} onChange={(value) => setDraft((prev) => ({ ...prev, experimentalCCHSigning: value }))} label="CCH 签名" />
           <label className={styles.fullSpan}>
             <span>Headers JSON</span>
             <textarea className={`input ${styles.textarea}`} value={draft.headersText} onChange={(event) => setDraft((prev) => ({ ...prev, headersText: event.target.value }))} />
+            <small className={styles.inheritHint}>这里是账号级额外 Headers；Workspace ID 会自动合并为 anthropic-workspace-id。</small>
           </label>
           <label className={styles.fullSpan}>
             <span>模型 JSON</span>
             <textarea className={`input ${styles.textarea}`} value={draft.modelsText} onChange={(event) => setDraft((prev) => ({ ...prev, modelsText: event.target.value }))} />
+            <small className={styles.inheritHint}>留空则继承公共模型列表。</small>
           </label>
           <label className={styles.fullSpan}>
             <span>排除模型 JSON</span>
@@ -1435,11 +1625,9 @@ export function ClaudeApiPoolPage() {
             <strong>支持的导入格式</strong>
             <p>
               最简格式是一行一个 <span className={styles.mono}>apiKey-----workspaceId</span>，会生成账号级
-              <span className={styles.mono}>headers.workspaceId</span>。也可以粘贴完整的
+              <span className={styles.mono}>headers.anthropic-workspace-id</span>。默认导入只追加新账号，不修改公共配置；也可以粘贴完整的
               <span className={styles.mono}>{poolImportFileName}</span>、带 <span className={styles.mono}>items</span>
-              的对象，或 JSON/YAML 账号数组；完整文件可覆盖顶层 <span className={styles.mono}>defaults</span>、
-              <span className={styles.mono}>models</span>、<span className={styles.mono}>virtual-cache</span> 和
-              <span className={styles.mono}>routing</span>。
+              的对象，或 JSON/YAML 账号数组。
             </p>
           </div>
           <div className={styles.exampleActions}>
@@ -1455,7 +1643,14 @@ export function ClaudeApiPoolPage() {
           </div>
         </div>
         <pre className={styles.importExample}>{simpleImportExample}</pre>
-        <ToggleSwitch checked={replaceImport} onChange={setReplaceImport} label="替换现有账号" />
+        <div className={styles.importModeBox}>
+          <ToggleSwitch checked={replaceImport} onChange={setReplaceImport} label="替换现有账号" />
+          <span>
+            默认关闭时只追加账号；打开后会替换现有账号。若导入内容是完整 YAML/JSON 文件，还会以文件内
+            <span className={styles.mono}> defaults/models/routing/virtual-cache </span>
+            替换公共配置。
+          </span>
+        </div>
         <textarea
           className={`input ${styles.textarea} ${styles.importTextarea}`}
           value={importContent}

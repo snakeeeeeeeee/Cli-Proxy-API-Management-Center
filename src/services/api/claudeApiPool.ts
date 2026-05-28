@@ -32,14 +32,23 @@ export const claudeApiPoolApi = {
       path?: string;
       import_path?: string;
       storage?: string;
+      defaults?: ClaudeAPIPoolConfig['defaults'];
+      models?: ClaudeAPIPoolConfig['models'];
       'virtual-cache'?: ClaudeAPIPoolConfig['virtual-cache'];
       routing?: ClaudeAPIPoolConfig['routing'];
       'reuse-stats'?: ClaudeAPIPoolConfig['reuse-stats'];
       'runtime-stats'?: ClaudeAPIPoolConfig['runtime-stats'];
     }>('/claude-api-pool/config', {
       enabled: config.enabled,
+      defaults: config.defaults,
+      models: config.models,
       'virtual-cache': config['virtual-cache'],
       routing: config.routing,
+    }),
+
+  createItem: (value: ClaudeAPIPoolItemRaw) =>
+    apiClient.post<{ status: string; item: ClaudeAPIPoolItem }>('/claude-api-pool/items', {
+      value,
     }),
 
   listItems: (params: ClaudeAPIPoolListParams) =>

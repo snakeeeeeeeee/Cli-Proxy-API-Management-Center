@@ -5,6 +5,8 @@ export interface ClaudeAPIPoolConfig {
   path?: string;
   import_path?: string;
   storage?: string;
+  defaults?: ClaudeAPIPoolDefaults;
+  models?: ModelAlias[];
   'virtual-cache'?: ClaudeAPIPoolVirtualCacheConfig;
   routing?: ClaudeAPIPoolRoutingConfig;
   'reuse-stats'?: ClaudeAPIPoolVirtualCacheReuseStats;

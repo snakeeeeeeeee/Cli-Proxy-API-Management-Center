@@ -178,7 +178,7 @@
 
 .configBar {
   display: grid;
-  grid-template-columns: minmax(260px, 0.8fr) minmax(320px, 1.2fr);
+  grid-template-columns: minmax(260px, 0.52fr) minmax(0, 1.48fr);
   gap: $spacing-lg;
   align-items: stretch;
   padding: $spacing-md;
@@ -213,16 +213,40 @@
 .sectionHeader {
   align-items: center;
   padding: 2px 0;
+  flex-direction: column;
+  align-items: flex-start;
+  grid-column: 1;
+  grid-row: 1;
+
+  p {
+    margin: 7px 0 0;
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  @include tablet {
+    grid-column: 1;
+    grid-row: auto;
+  }
 }
 
 .fixedPath {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: 10px;
   min-width: 0;
+  margin-top: $spacing-md;
+  grid-column: 1;
+  grid-row: 2;
 
   @include mobile {
-    grid-template-columns: 1fr;
+    margin-top: $spacing-sm;
+  }
+
+  @include tablet {
+    grid-column: 1;
+    grid-row: auto;
   }
 
   > div {
@@ -246,6 +270,112 @@
     min-width: 0;
     color: var(--text-primary);
     font-weight: 700;
+  }
+}
+
+.publicConfigPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  padding: 14px;
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  border: 1px solid var(--pool-border);
+  border-radius: $radius-md;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--pool-surface-strong) 94%, transparent), var(--pool-muted-surface));
+
+  @include tablet {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  @include mobile {
+    grid-column: 1;
+    grid-row: auto;
+  }
+}
+
+.publicConfigGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(140px, 1fr));
+  gap: 12px;
+  min-width: 0;
+
+  @include tablet {
+    grid-template-columns: repeat(2, minmax(160px, 1fr));
+  }
+
+  @include mobile {
+    grid-template-columns: 1fr;
+  }
+}
+
+.publicToggleField {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 7px;
+  min-width: 0;
+  min-height: 65px;
+  padding: 10px 12px;
+  border: 1px solid var(--pool-border);
+  border-radius: $radius-md;
+  background: color-mix(in srgb, var(--pool-surface) 72%, transparent);
+
+  span {
+    color: var(--text-tertiary);
+    font-size: 12px;
+    line-height: 1.4;
+  }
+}
+
+.publicConfigColumns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  min-width: 0;
+
+  @include tablet {
+    grid-template-columns: 1fr;
+  }
+}
+
+.publicConfigList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--pool-border);
+  border-radius: $radius-md;
+  background: color-mix(in srgb, var(--pool-surface) 76%, transparent);
+
+  :global(.header-input-row) {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
+  }
+}
+
+.publicConfigListHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+
+  span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-primary);
+    font-size: 13px;
+    font-weight: 760;
+  }
+
+  small {
+    color: var(--text-tertiary);
+    font-size: 12px;
+    line-height: 1.4;
   }
 }
 
@@ -714,6 +844,21 @@
 
 .fullSpan {
   grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  > span {
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 650;
+  }
+}
+
+.inheritHint {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .textarea {
@@ -731,6 +876,31 @@
   background: var(--bg-secondary);
   color: var(--text-secondary);
   font-size: 13px;
+}
+
+.importModeBox {
+  display: flex;
+  align-items: flex-start;
+  gap: $spacing-sm;
+  margin-bottom: $spacing-sm;
+  padding: $spacing-sm $spacing-md;
+  border: 1px solid var(--pool-border);
+  border-radius: $radius-md;
+  background: color-mix(in srgb, var(--warning-color, #f59e0b) 7%, var(--pool-muted-surface));
+
+  > label {
+    flex: 0 0 auto;
+  }
+
+  > span {
+    color: var(--text-secondary);
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  @include mobile {
+    flex-direction: column;
+  }
 }
 
 .testPanel {
