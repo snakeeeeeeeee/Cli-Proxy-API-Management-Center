@@ -29,6 +29,7 @@ export const claudeApiPoolApi = {
     apiClient.patch<{
       status: string;
       enabled: boolean;
+      'pure-mode'?: boolean;
       path?: string;
       import_path?: string;
       storage?: string;
@@ -40,6 +41,7 @@ export const claudeApiPoolApi = {
       'runtime-stats'?: ClaudeAPIPoolConfig['runtime-stats'];
     }>('/claude-api-pool/config', {
       enabled: config.enabled,
+      'pure-mode': config['pure-mode'],
       defaults: config.defaults,
       models: config.models,
       'virtual-cache': config['virtual-cache'],

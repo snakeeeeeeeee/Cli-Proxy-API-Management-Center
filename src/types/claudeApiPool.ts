@@ -2,6 +2,7 @@ import type { CloakConfig, ModelAlias } from './provider';
 
 export interface ClaudeAPIPoolConfig {
   enabled: boolean;
+  'pure-mode'?: boolean;
   path?: string;
   import_path?: string;
   storage?: string;

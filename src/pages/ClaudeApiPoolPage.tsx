@@ -627,6 +627,7 @@ export function ClaudeApiPoolPage() {
       const routing = routingDraftToConfig(routingDraft);
       const result = await claudeApiPoolApi.updateConfig({
         enabled: config.enabled,
+        'pure-mode': Boolean(config['pure-mode']),
         defaults: poolDefaults.defaults,
         models: poolDefaults.models,
         'virtual-cache': virtualCache,
@@ -634,6 +635,7 @@ export function ClaudeApiPoolPage() {
       });
       const nextConfig = {
         enabled: result.enabled,
+        'pure-mode': Boolean(result['pure-mode']),
         path: result.path || config.path,
         import_path: result.import_path || config.import_path,
         storage: result.storage || config.storage,
@@ -998,11 +1000,21 @@ export function ClaudeApiPoolPage() {
             <h2>公共配置入口</h2>
             <p>Defaults、Models、账号导入分开管理。账号未单独覆盖时，会继承公共 Defaults 和公共 Models。</p>
           </div>
-          <ToggleSwitch
-            checked={config.enabled}
-            onChange={(enabled) => setConfig((prev) => ({ ...prev, enabled }))}
-            label="启用账号池"
-          />
+          <div className={styles.configSwitches}>
+            <ToggleSwitch
+              checked={config.enabled}
+              onChange={(enabled) => setConfig((prev) => ({ ...prev, enabled }))}
+              label="启用账号池"
+            />
+            <div className={styles.inlineToggleField}>
+              <ToggleSwitch
+                checked={Boolean(config['pure-mode'])}
+                onChange={(pureMode) => setConfig((prev) => ({ ...prev, 'pure-mode': pureMode }))}
+                label="纯净模式"
+              />
+              <span>不注入 Claude Code 系统提示词，不自动添加 cache_control。</span>
+            </div>
+          </div>
         </div>
         <div className={styles.storageStrip}>
           <div>

@@ -238,6 +238,20 @@
   }
 }
 
+.configSwitches {
+  display: flex;
+  flex: 0 0 260px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  min-width: 220px;
+
+  @include mobile {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
 .storageStrip {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
