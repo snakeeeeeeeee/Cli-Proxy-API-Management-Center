@@ -13,7 +13,6 @@ import {
   IconDownload,
   IconFileText,
   IconKey,
-  IconModelCluster,
   IconPencil,
   IconPlay,
   IconPower,
@@ -517,6 +516,10 @@ export function ClaudeApiPoolPage() {
   const [replaceImport, setReplaceImport] = useState(false);
   const [importPreview, setImportPreview] = useState<ClaudeAPIPoolImportPreview | null>(null);
   const [importing, setImporting] = useState(false);
+  const [quickImportContent, setQuickImportContent] = useState('');
+  const [quickReplaceImport, setQuickReplaceImport] = useState(false);
+  const [quickImportPreview, setQuickImportPreview] = useState<ClaudeAPIPoolImportPreview | null>(null);
+  const [quickImporting, setQuickImporting] = useState(false);
   const [selectedPositions, setSelectedPositions] = useState<Set<number>>(new Set());
   const [batchUpdating, setBatchUpdating] = useState(false);
   const [testingItem, setTestingItem] = useState<ClaudeAPIPoolItem | null>(null);
@@ -538,7 +541,9 @@ export function ClaudeApiPoolPage() {
   const somePageSelected = items.some((item) => selectedPositions.has(item.position));
   const runtimeStats = config['runtime-stats'];
   const runtimeTotalAccounts = runtimeStats?.account_count || total;
-  const autoRefreshPaused = Boolean(editing || creatingItem || importOpen || testingItem);
+  const autoRefreshPaused = Boolean(editing || creatingItem || importOpen || testingItem || quickImporting);
+  const publicModelCount = entriesToModels(poolDefaultsDraft.models).length;
+  const publicHeaderCount = Object.keys(buildHeaderObject(poolDefaultsDraft.headers)).length;
   const modelOptions = useMemo(() => {
     const names = new Set<string>();
     items.forEach((item) => {
@@ -841,6 +846,45 @@ export function ClaudeApiPoolPage() {
     }
   };
 
+  const previewQuickImport = async () => {
+    if (!quickImportContent.trim()) {
+      showNotification('请先粘贴 apiKey-----workspaceId', 'error');
+      return;
+    }
+    setQuickImporting(true);
+    try {
+      const result = await claudeApiPoolApi.importPool(quickImportContent, quickReplaceImport, true);
+      if ('items' in result) {
+        setQuickImportPreview(result);
+      }
+    } catch (err) {
+      showNotification(`账号导入预览失败：${getErrorMessage(err)}`, 'error');
+    } finally {
+      setQuickImporting(false);
+    }
+  };
+
+  const runQuickImport = async () => {
+    if (!quickImportContent.trim()) {
+      showNotification('请先粘贴 apiKey-----workspaceId', 'error');
+      return;
+    }
+    setQuickImporting(true);
+    try {
+      const result = await claudeApiPoolApi.importPool(quickImportContent, quickReplaceImport, false);
+      if ('imported' in result) {
+        showNotification(`已导入 ${result.imported} 个账号`, 'success');
+      }
+      setQuickImportContent('');
+      setQuickImportPreview(null);
+      await loadItems();
+    } catch (err) {
+      showNotification(`账号导入失败：${getErrorMessage(err)}`, 'error');
+    } finally {
+      setQuickImporting(false);
+    }
+  };
+
   const fillImportExample = (content: string) => {
     setImportContent(content);
     setImportPreview(null);
@@ -945,12 +989,12 @@ export function ClaudeApiPoolPage() {
         </div>
       </div>
 
-      <section className={styles.configBar}>
-        <div className={styles.sectionHeader}>
+      <section className={styles.configIntro}>
+        <div className={styles.configIntroMain}>
           <div>
             <span className={styles.sectionKicker}><IconSettings size={15} /> 基础配置</span>
-            <h2>公共配置</h2>
-            <p>这些值会作为新增账号和未单独覆盖账号的默认值。</p>
+            <h2>公共配置入口</h2>
+            <p>Defaults、Models、账号导入分开管理。账号未单独覆盖时，会继承公共 Defaults 和公共 Models。</p>
           </div>
           <ToggleSwitch
             checked={config.enabled}
@@ -958,83 +1002,165 @@ export function ClaudeApiPoolPage() {
             label="启用账号池"
           />
         </div>
-        <div className={styles.fixedPath}>
+        <div className={styles.storageStrip}>
           <div>
             <span>SQLite 主存储</span>
             <strong className={styles.mono}>{config.path || poolStoreName}</strong>
           </div>
           <div>
-            <span>YAML 导入格式</span>
+            <span>高级导入文件</span>
             <strong className={styles.mono}>{config.import_path || poolImportFileName}</strong>
           </div>
+          <div>
+            <span>当前公共模型</span>
+            <strong>{publicModelCount} 个</strong>
+          </div>
         </div>
-        <div className={styles.publicConfigPanel}>
-          <div className={styles.publicConfigGrid}>
+      </section>
+
+      <div className={styles.setupGrid}>
+        <section className={`${styles.setupPanel} ${styles.defaultsPanel}`}>
+          <div className={styles.setupPanelHead}>
+            <div>
+              <span className={styles.panelIndex}>01</span>
+              <h2>公共 Defaults</h2>
+              <p>Base URL、代理、优先级和公共 Headers 会作为账号级默认值。</p>
+            </div>
+            <div className={styles.panelMetric}>
+              <strong>{publicHeaderCount}</strong>
+              <span>Headers</span>
+            </div>
+          </div>
+
+          <div className={styles.defaultsGrid}>
             <Input
-              label="公共 Base URL"
+              label="Base URL"
               value={poolDefaultsDraft.baseUrl}
               onChange={(event) => setPoolDefaultsDraft((prev) => ({ ...prev, baseUrl: event.target.value }))}
               placeholder="留空使用默认 Anthropic"
             />
             <Input
-              label="公共代理 URL"
+              label="代理 URL"
               value={poolDefaultsDraft.proxyUrl}
               onChange={(event) => setPoolDefaultsDraft((prev) => ({ ...prev, proxyUrl: event.target.value }))}
               placeholder="留空不走独立代理"
             />
             <Input
-              label="公共优先级"
+              label="优先级"
               type="number"
               step="1"
               value={poolDefaultsDraft.priority}
               onChange={(event) => setPoolDefaultsDraft((prev) => ({ ...prev, priority: event.target.value }))}
               placeholder="0"
             />
-            <div className={styles.publicToggleField}>
+            <div className={styles.inlineToggleField}>
               <ToggleSwitch
                 checked={poolDefaultsDraft.disableCooling}
                 onChange={(disableCooling) => setPoolDefaultsDraft((prev) => ({ ...prev, disableCooling }))}
                 label="默认禁用冷却"
               />
-              <span>账号未覆盖时继承这个冷却策略。</span>
+              <span>只影响没有账号级覆盖的账号。</span>
             </div>
           </div>
 
-          <div className={styles.publicConfigColumns}>
-            <div className={styles.publicConfigList}>
-              <div className={styles.publicConfigListHeader}>
-                <span><IconFileText size={15} /> 公共 Headers</span>
-                <small>例如 anthropic-version 或自定义路由头。</small>
-              </div>
-              <HeaderInputList
-                entries={poolDefaultsDraft.headers}
-                onChange={(headers) => setPoolDefaultsDraft((prev) => ({ ...prev, headers }))}
-                addLabel="添加 Header"
-                keyPlaceholder="header-name"
-                valuePlaceholder="value"
-                removeButtonTitle="删除 Header"
-                removeButtonAriaLabel="删除 Header"
-              />
+          <div className={styles.editorBlock}>
+            <div className={styles.editorBlockHead}>
+              <span><IconFileText size={15} /> 公共 Headers</span>
+              <small>例如 anthropic-version、自定义代理头，Workspace 不建议放这里。</small>
             </div>
+            <HeaderInputList
+              entries={poolDefaultsDraft.headers}
+              onChange={(headers) => setPoolDefaultsDraft((prev) => ({ ...prev, headers }))}
+              addLabel="添加 Header"
+              keyPlaceholder="header-name"
+              valuePlaceholder="value"
+              removeButtonTitle="删除 Header"
+              removeButtonAriaLabel="删除 Header"
+            />
+          </div>
+        </section>
 
-            <div className={styles.publicConfigList}>
-              <div className={styles.publicConfigListHeader}>
-                <span><IconModelCluster size={15} /> 公共模型</span>
-                <small>新增账号默认继承这里的模型列表。</small>
-              </div>
-              <ModelInputList
-                entries={poolDefaultsDraft.models}
-                onChange={(models) => setPoolDefaultsDraft((prev) => ({ ...prev, models }))}
-                addLabel="添加模型"
-                namePlaceholder="claude-opus-4-8"
-                aliasPlaceholder="alias，可留空"
-                removeButtonTitle="删除模型"
-                removeButtonAriaLabel="删除模型"
-              />
+        <section className={styles.setupPanel}>
+          <div className={styles.setupPanelHead}>
+            <div>
+              <span className={styles.panelIndex}>02</span>
+              <h2>公共 Models</h2>
+              <p>这里维护池子的公共模型清单。alias 可以留空，新增账号默认继承。</p>
+            </div>
+            <div className={styles.panelMetric}>
+              <strong>{publicModelCount}</strong>
+              <span>Models</span>
             </div>
           </div>
-        </div>
-      </section>
+
+          <div className={styles.modelEditorShell}>
+            <div className={styles.modelColumnsHeader}>
+              <span>真实模型名</span>
+              <span>别名，可留空</span>
+            </div>
+            <ModelInputList
+              entries={poolDefaultsDraft.models}
+              onChange={(models) => setPoolDefaultsDraft((prev) => ({ ...prev, models }))}
+              addLabel="添加模型"
+              namePlaceholder="claude-opus-4-8"
+              aliasPlaceholder="alias"
+              rowClassName={styles.modelRow}
+              inputClassName={styles.compactInput}
+              removeButtonTitle="删除模型"
+              removeButtonAriaLabel="删除模型"
+            />
+          </div>
+        </section>
+
+        <section className={styles.setupPanel}>
+          <div className={styles.setupPanelHead}>
+            <div>
+              <span className={styles.panelIndex}>03</span>
+              <h2>账号导入</h2>
+              <p>一行一个账号，格式固定为 apiKey-----workspaceId。默认追加，不覆盖现有账号。</p>
+            </div>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                setQuickImportContent(simpleImportExample);
+                setQuickImportPreview(null);
+              }}
+            >
+              填入示例
+            </Button>
+          </div>
+
+          <textarea
+            className={`input ${styles.quickImportTextarea}`}
+            value={quickImportContent}
+            onChange={(event) => {
+              setQuickImportContent(event.target.value);
+              setQuickImportPreview(null);
+            }}
+            placeholder={`api-key-1-----wrkspc_xxx\napi-key-2-----wrkspc_yyy`}
+          />
+          <div className={styles.importControlRow}>
+            <ToggleSwitch checked={quickReplaceImport} onChange={setQuickReplaceImport} label="替换现有账号" />
+            <div className={styles.importActions}>
+              <Button variant="secondary" size="sm" onClick={() => setImportOpen(true)}>
+                <IconUpload size={16} /> 高级导入
+              </Button>
+              <Button variant="secondary" size="sm" onClick={previewQuickImport} loading={quickImporting}>
+                预览
+              </Button>
+              <Button size="sm" onClick={runQuickImport} loading={quickImporting}>
+                导入账号
+              </Button>
+            </div>
+          </div>
+          <div className={styles.importHintLine}>
+            {quickImportPreview
+              ? `预览：共 ${quickImportPreview.count} 个账号，当前显示前 ${quickImportPreview.items.length} 个。`
+              : '分隔符是 5 个英文横线：-----。Workspace 会写入账号级 anthropic-workspace-id。'}
+          </div>
+        </section>
+      </div>
 
       <div className={styles.settingsLayout}>
         <section className={styles.virtualCacheBar}>
@@ -1282,9 +1408,6 @@ export function ClaudeApiPoolPage() {
           </Button>
           <Button variant="secondary" size="sm" onClick={() => batchSetDisabled(true)} disabled={selectedCount === 0 || batchUpdating} loading={batchUpdating}>
             <IconPower size={16} /> 批量禁用
-          </Button>
-          <Button variant="secondary" size="sm" onClick={() => setImportOpen(true)}>
-            <IconUpload size={16} /> 导入
           </Button>
           <Button variant="secondary" size="sm" onClick={() => exportPool('yaml')}>
             <IconDownload size={16} /> 导出

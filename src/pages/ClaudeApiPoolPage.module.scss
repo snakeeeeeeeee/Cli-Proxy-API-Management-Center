@@ -165,7 +165,8 @@
   }
 }
 
-.configBar,
+.configIntro,
+.setupPanel,
 .virtualCacheBar,
 .routingBar,
 .toolbar,
@@ -176,23 +177,6 @@
   box-shadow: var(--pool-inset), 0 10px 28px rgb(45 42 38 / 0.05);
 }
 
-.configBar {
-  display: grid;
-  grid-template-columns: minmax(260px, 0.52fr) minmax(0, 1.48fr);
-  gap: $spacing-lg;
-  align-items: stretch;
-  padding: $spacing-md;
-
-  @include tablet {
-    grid-template-columns: 1fr;
-  }
-
-  @include mobile {
-    grid-template-columns: 1fr;
-  }
-}
-
-.sectionHeader,
 .virtualCacheHeader,
 .routingHeader {
   display: flex;
@@ -210,53 +194,65 @@
   }
 }
 
-.sectionHeader {
-  align-items: center;
-  padding: 2px 0;
-  flex-direction: column;
-  align-items: flex-start;
-  grid-column: 1;
-  grid-row: 1;
-
-  p {
-    margin: 7px 0 0;
-    color: var(--text-secondary);
-    font-size: 13px;
-    line-height: 1.45;
-  }
+.configIntro {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(360px, 0.9fr);
+  gap: $spacing-md;
+  align-items: stretch;
+  padding: $spacing-md;
 
   @include tablet {
-    grid-column: 1;
-    grid-row: auto;
+    grid-template-columns: 1fr;
+  }
+
+  @include mobile {
+    grid-template-columns: 1fr;
   }
 }
 
-.fixedPath {
+.configIntroMain {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: $spacing-md;
   min-width: 0;
-  margin-top: $spacing-md;
-  grid-column: 1;
-  grid-row: 2;
+
+  h2 {
+    margin: 8px 0 0;
+    color: var(--text-primary);
+    font-size: 17px;
+    font-weight: 760;
+    line-height: 1.25;
+  }
+
+  p {
+    max-width: 720px;
+    margin: 7px 0 0;
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 1.5;
+  }
 
   @include mobile {
-    margin-top: $spacing-sm;
+    flex-direction: column;
   }
+}
 
-  @include tablet {
-    grid-column: 1;
-    grid-row: auto;
-  }
+.storageStrip {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  min-width: 0;
 
   > div {
     display: flex;
-    flex-direction: column;
-    gap: 7px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
     min-width: 0;
-    padding: 13px 14px;
+    padding: 10px 12px;
     border: 1px solid var(--pool-border);
-    border-radius: $radius-md;
+    border-radius: 8px;
     background: var(--pool-muted-surface);
   }
 
@@ -270,41 +266,18 @@
     min-width: 0;
     color: var(--text-primary);
     font-weight: 700;
+    text-align: right;
   }
 }
 
-.publicConfigPanel {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  min-width: 0;
-  padding: 14px;
-  grid-column: 2;
-  grid-row: 1 / span 2;
-  border: 1px solid var(--pool-border);
-  border-radius: $radius-md;
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--pool-surface-strong) 94%, transparent), var(--pool-muted-surface));
-
-  @include tablet {
-    grid-column: 1;
-    grid-row: auto;
-  }
-
-  @include mobile {
-    grid-column: 1;
-    grid-row: auto;
-  }
-}
-
-.publicConfigGrid {
+.setupGrid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(140px, 1fr));
-  gap: 12px;
-  min-width: 0;
+  grid-template-columns: minmax(360px, 1.1fr) minmax(320px, 0.95fr);
+  gap: 18px;
+  align-items: start;
 
   @include tablet {
-    grid-template-columns: repeat(2, minmax(160px, 1fr));
+    grid-template-columns: 1fr;
   }
 
   @include mobile {
@@ -312,7 +285,96 @@
   }
 }
 
-.publicToggleField {
+.setupPanel {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+  min-width: 0;
+  padding: $spacing-md;
+}
+
+.defaultsPanel {
+  grid-row: span 2;
+}
+
+.setupPanelHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: $spacing-md;
+  min-width: 0;
+
+  h2 {
+    margin: 6px 0 0;
+    color: var(--text-primary);
+    font-size: 16px;
+    font-weight: 780;
+    line-height: 1.25;
+  }
+
+  p {
+    margin: 6px 0 0;
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 1.45;
+  }
+}
+
+.panelIndex {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 22px;
+  border: 1px solid var(--pool-border);
+  border-radius: 999px;
+  background: var(--pool-muted-surface);
+  color: var(--text-secondary);
+  font-family: $font-mono;
+  font-size: 11px;
+  font-weight: 760;
+}
+
+.panelMetric {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  min-width: 58px;
+  padding: 8px 10px;
+  border: 1px solid var(--pool-border);
+  border-radius: 8px;
+  background: var(--pool-muted-surface);
+
+  strong {
+    color: var(--text-primary);
+    font-size: 18px;
+    font-weight: 780;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+
+  span {
+    color: var(--text-tertiary);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+}
+
+.defaultsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(160px, 1fr));
+  gap: 12px;
+  min-width: 0;
+
+  @include mobile {
+    grid-template-columns: 1fr;
+  }
+}
+
+.inlineToggleField {
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -331,18 +393,8 @@
   }
 }
 
-.publicConfigColumns {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  min-width: 0;
-
-  @include tablet {
-    grid-template-columns: 1fr;
-  }
-}
-
-.publicConfigList {
+.editorBlock,
+.modelEditorShell {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -357,7 +409,11 @@
   }
 }
 
-.publicConfigListHeader {
+.modelEditorShell {
+  gap: 8px;
+}
+
+.editorBlockHead {
   display: flex;
   flex-direction: column;
   gap: 5px;
@@ -377,6 +433,64 @@
     font-size: 12px;
     line-height: 1.4;
   }
+}
+
+.modelColumnsHeader {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 22px minmax(0, 0.75fr) 34px;
+  gap: 8px;
+  padding: 0 2px;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 760;
+  text-transform: uppercase;
+
+  span:nth-child(2) {
+    grid-column: 3;
+  }
+}
+
+.modelRow {
+  grid-template-columns: minmax(0, 1fr) 22px minmax(0, 0.75fr) 34px;
+}
+
+.compactInput {
+  min-height: 36px;
+}
+
+.quickImportTextarea {
+  min-height: 154px;
+  resize: vertical;
+  font-family: $font-mono;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.importControlRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $spacing-sm;
+  flex-wrap: wrap;
+}
+
+.importActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.importHintLine {
+  min-height: 34px;
+  padding: 9px 10px;
+  border: 1px solid var(--pool-border);
+  border-radius: 8px;
+  background: var(--pool-muted-surface);
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .settingsLayout {
