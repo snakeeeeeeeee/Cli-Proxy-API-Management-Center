@@ -40,7 +40,6 @@ import styles from './ClaudeApiPoolPage.module.scss';
 
 const pageSizes = ['25', '50', '100', '200'];
 const poolStoreName = 'claude-api-pool.db';
-const poolImportFileName = 'claude-api-pool.yaml';
 const statusOptions = [
   { value: '', label: '全部状态' },
   { value: 'enabled', label: '启用' },
@@ -73,6 +72,8 @@ defaults:
     anthropic-version: 2023-06-01
 
 models:
+  - name: claude-opus-4-8
+    alias: ""
   - name: claude-opus-4-7
     alias: ""
   - name: claude-sonnet-4-6
@@ -123,6 +124,7 @@ const jsonImportExample = `{
     }
   },
   "models": [
+    { "name": "claude-opus-4-8", "alias": "" },
     { "name": "claude-opus-4-7", "alias": "" },
     { "name": "claude-sonnet-4-6", "alias": "" }
   ],
@@ -1008,12 +1010,12 @@ export function ClaudeApiPoolPage() {
             <strong className={styles.mono}>{config.path || poolStoreName}</strong>
           </div>
           <div>
-            <span>高级导入文件</span>
-            <strong className={styles.mono}>{config.import_path || poolImportFileName}</strong>
-          </div>
-          <div>
             <span>当前公共模型</span>
             <strong>{publicModelCount} 个</strong>
+          </div>
+          <div>
+            <span>账号记录</span>
+            <strong>{formatNumber(total)} 个</strong>
           </div>
         </div>
       </section>
@@ -1144,7 +1146,7 @@ export function ClaudeApiPoolPage() {
             <ToggleSwitch checked={quickReplaceImport} onChange={setQuickReplaceImport} label="替换现有账号" />
             <div className={styles.importActions}>
               <Button variant="secondary" size="sm" onClick={() => setImportOpen(true)}>
-                <IconUpload size={16} /> 高级导入
+                <IconUpload size={16} /> 备份 / 迁移
               </Button>
               <Button variant="secondary" size="sm" onClick={previewQuickImport} loading={quickImporting}>
                 预览
@@ -1408,9 +1410,6 @@ export function ClaudeApiPoolPage() {
           </Button>
           <Button variant="secondary" size="sm" onClick={() => batchSetDisabled(true)} disabled={selectedCount === 0 || batchUpdating} loading={batchUpdating}>
             <IconPower size={16} /> 批量禁用
-          </Button>
-          <Button variant="secondary" size="sm" onClick={() => exportPool('yaml')}>
-            <IconDownload size={16} /> 导出
           </Button>
           <Button variant="secondary" size="sm" onClick={clearLedger}>
             <IconTable size={16} /> 清空账本
@@ -1732,30 +1731,34 @@ export function ClaudeApiPoolPage() {
 
       <Modal
         open={importOpen}
-        title="导入 Claude API 池"
+        title="备份 / 迁移 Claude API 池"
         onClose={() => !importing && setImportOpen(false)}
         width={760}
         footer={
           <div className={styles.modalFooter}>
             <Button variant="ghost" onClick={() => setImportOpen(false)} disabled={importing}>取消</Button>
+            <Button variant="secondary" onClick={() => exportPool('json')} disabled={importing}>
+              <IconDownload size={16} /> 导出 JSON
+            </Button>
+            <Button variant="secondary" onClick={() => exportPool('yaml')} disabled={importing}>
+              <IconDownload size={16} /> 导出 YAML
+            </Button>
             <Button variant="secondary" onClick={previewImport} loading={importing}>预览</Button>
-            <Button onClick={runImport} loading={importing}>导入</Button>
+            <Button onClick={runImport} loading={importing}>导入迁移文件</Button>
           </div>
         }
       >
         <div className={styles.importHelp}>
           <div>
-            <strong>支持的导入格式</strong>
+            <strong>低频备份和迁移</strong>
             <p>
-              最简格式是一行一个 <span className={styles.mono}>apiKey-----workspaceId</span>，会生成账号级
-              <span className={styles.mono}>headers.anthropic-workspace-id</span>。默认导入只追加新账号，不修改公共配置；也可以粘贴完整的
-              <span className={styles.mono}>{poolImportFileName}</span>、带 <span className={styles.mono}>items</span>
-              的对象，或 JSON/YAML 账号数组。
+              日常新增账号请使用页面里的账号导入框。这里用于跨机器迁移、旧配置导入或完整备份恢复；
+              当前运行数据仍以 SQLite 为主存储。
             </p>
           </div>
           <div className={styles.exampleActions}>
             <Button variant="secondary" size="sm" onClick={() => fillImportExample(simpleImportExample)}>
-              填入简洁示例
+              账号示例
             </Button>
             <Button variant="secondary" size="sm" onClick={() => fillImportExample(yamlImportExample)}>
               填入 YAML 示例
@@ -1769,7 +1772,7 @@ export function ClaudeApiPoolPage() {
         <div className={styles.importModeBox}>
           <ToggleSwitch checked={replaceImport} onChange={setReplaceImport} label="替换现有账号" />
           <span>
-            默认关闭时只追加账号；打开后会替换现有账号。若导入内容是完整 YAML/JSON 文件，还会以文件内
+            默认关闭时只追加账号；打开后会替换现有账号。若导入内容是完整迁移文件，还会以文件内
             <span className={styles.mono}> defaults/models/routing/virtual-cache </span>
             替换公共配置。
           </span>
@@ -1781,7 +1784,7 @@ export function ClaudeApiPoolPage() {
             setImportContent(event.target.value);
             setImportPreview(null);
           }}
-          placeholder="每行 apiKey-----workspaceId，或粘贴 YAML/JSON"
+          placeholder="粘贴导出的 JSON/YAML 迁移内容，或每行 apiKey-----workspaceId"
         />
         {importPreview && (
           <div className={styles.importPreview}>
