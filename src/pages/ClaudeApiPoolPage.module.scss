@@ -561,8 +561,231 @@
   }
 }
 
+.routingTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: $spacing-md;
+  min-width: 0;
+
+  h2 {
+    margin: 8px 0 0;
+    color: var(--text-primary);
+    font-size: 16px;
+    font-weight: 760;
+    line-height: 1.25;
+  }
+
+  @include mobile {
+    flex-direction: column;
+  }
+}
+
+.autoStrategyPanel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.78fr);
+  gap: 12px;
+  min-width: 0;
+
+  @include tablet {
+    grid-template-columns: 1fr;
+  }
+}
+
+.autoStrategyGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  min-width: 0;
+
+  @include tablet {
+    grid-template-columns: 1fr;
+  }
+}
+
+.autoSelectCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  min-height: 142px;
+  padding: 13px;
+  border: 1px solid var(--pool-border);
+  border-radius: $radius-md;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--pool-surface-strong) 88%, transparent), var(--pool-muted-surface));
+
+  > span {
+    color: var(--text-tertiary);
+    font-size: 11px;
+    font-weight: 760;
+    text-transform: uppercase;
+  }
+
+  small {
+    color: var(--text-secondary);
+    font-size: 12px;
+    line-height: 1.45;
+  }
+}
+
+.autoPlanCard {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  min-width: 0;
+  border: 1px solid color-mix(in srgb, var(--primary-color) 22%, var(--pool-border));
+  border-radius: $radius-md;
+  background: color-mix(in srgb, var(--primary-color) 18%, var(--pool-border));
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--primary-color) 8%, transparent);
+
+  > div {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 7px;
+    min-width: 0;
+    min-height: 142px;
+    padding: 13px;
+    background: color-mix(in srgb, var(--pool-surface-strong) 90%, var(--primary-color) 3%);
+  }
+
+  span {
+    color: var(--text-tertiary);
+    font-size: 11px;
+    font-weight: 720;
+    text-transform: uppercase;
+  }
+
+  strong {
+    min-width: 0;
+    color: var(--text-primary);
+    font-size: 18px;
+    font-weight: 780;
+    line-height: 1.2;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+  }
+
+  small {
+    color: var(--text-tertiary);
+    font-size: 12px;
+    line-height: 1.35;
+  }
+
+  @include tablet {
+    grid-template-columns: 1fr;
+  }
+}
+
+.affinityPlanReason {
+  strong {
+    color: color-mix(in srgb, var(--text-primary) 82%, var(--primary-color));
+  }
+}
+
+.advancedActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.manualModeNote {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--pool-border);
+  border-radius: $radius-md;
+  background: var(--pool-muted-surface);
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.4;
+
+  @include mobile {
+    align-items: flex-start;
+  }
+}
+
+.routingSummaryGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+
+  > div {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+    padding: 12px;
+    border: 1px solid var(--pool-border);
+    border-radius: $radius-md;
+    background: color-mix(in srgb, var(--pool-muted-surface) 76%, var(--pool-surface));
+  }
+
+  span {
+    color: var(--text-tertiary);
+    font-size: 11px;
+    font-weight: 720;
+    text-transform: uppercase;
+  }
+
+  strong {
+    color: var(--text-primary);
+    font-size: 15px;
+    font-weight: 740;
+    line-height: 1.25;
+    font-variant-numeric: tabular-nums;
+  }
+
+  small {
+    color: var(--text-secondary);
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  @include tablet {
+    grid-template-columns: 1fr;
+  }
+}
+
+.affinitySwitchRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  min-height: 34px;
+}
+
+.affinityAdvancedToggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: fit-content;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--pool-border);
+  border-radius: $radius-md;
+  background: var(--pool-muted-surface);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 680;
+  cursor: pointer;
+
+  &:hover {
+    border-color: color-mix(in srgb, var(--primary-color) 34%, var(--pool-border));
+    color: var(--text-primary);
+  }
+}
+
 .virtualCacheGrid,
 .routingGrid,
+.affinityAdvancedGrid,
 .toolbar,
 .modalGrid,
 .testControls {
@@ -585,6 +808,20 @@
   }
 }
 
+.affinityAdvancedGrid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(120px, 1fr));
+  gap: 12px;
+
+  @include tablet {
+    grid-template-columns: repeat(2, minmax(150px, 1fr));
+  }
+
+  @include mobile {
+    grid-template-columns: 1fr;
+  }
+}
+
 .selectField {
   display: flex;
   flex-direction: column;
@@ -595,6 +832,12 @@
     color: var(--text-secondary);
     font-size: 13px;
     font-weight: 650;
+  }
+
+  small {
+    color: var(--text-tertiary);
+    font-size: 12px;
+    line-height: 1.45;
   }
 }
 

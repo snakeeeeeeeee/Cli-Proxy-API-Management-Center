@@ -53,6 +53,8 @@ export interface ClaudeAPIPoolRoutingConfig {
   same_account_retry_delay_ms: number;
   cache_affinity_enabled: boolean;
   cache_affinity_auto: boolean;
+  cache_affinity_auto_profile?: 'cost' | 'balanced' | 'throughput' | string;
+  account_capacity_profile?: 'conservative' | 'standard' | 'aggressive' | 'custom' | string;
   cache_affinity_min_cache_tokens: number;
   cache_affinity_lanes: number;
   cache_affinity_max_lanes: number;
@@ -73,12 +75,26 @@ export interface ClaudeAPIPoolRuntimeStats {
   request_count: number;
   success_count: number;
   failure_count: number;
+  status_429?: number;
+  status_529?: number;
+  status_5xx?: number;
   success_rate: number;
   real_cache_ratio: number;
   cache_read_tokens: number;
   cache_creation_tokens: number;
   input_tokens: number;
   output_tokens: number;
+  affinity_auto_plan?: ClaudeAPIPoolAffinityAutoPlan;
+}
+
+export interface ClaudeAPIPoolAffinityAutoPlan {
+  enabled: boolean;
+  effective_lanes: number;
+  effective_max_lanes: number;
+  pool_size: number;
+  available_accounts: number;
+  pressure: number;
+  reason: string;
 }
 
 export interface ClaudeAPIPoolMetricsBucket {
