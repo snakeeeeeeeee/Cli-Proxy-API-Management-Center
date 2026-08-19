@@ -1,13 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/Button';
-import { HeaderInputList } from '@/components/ui/HeaderInputList';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
-import { ModelInputList } from '@/components/ui/ModelInputList';
-import { entriesToModels, modelsToEntries, type ModelEntry } from '@/components/ui/modelInputListUtils';
 import { SelectionCheckbox } from '@/components/ui/SelectionCheckbox';
 import { Select } from '@/components/ui/Select';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
+import { HeaderInputList, ModelInputList } from '@/features/claudeApiPool/PoolInputLists';
+import {
+  entriesToModels,
+  headersToEntries,
+  modelsToEntries,
+  type ModelEntry,
+} from '@/features/claudeApiPool/poolInputTransforms';
 import {
   IconChartLine,
   IconChevronDown,
@@ -30,7 +34,7 @@ import {
 import { claudeApiPoolApi } from '@/services/api';
 import { useNotificationStore } from '@/stores';
 import { downloadBlob } from '@/utils/download';
-import { buildHeaderObject, headersToEntries, type HeaderEntry } from '@/utils/headers';
+import { buildHeaderObject, type HeaderEntry } from '@/utils/headers';
 import type {
   ClaudeAPIPoolConfig,
   ClaudeAPIPoolImportPreview,
@@ -41,7 +45,6 @@ import type {
 import styles from './ClaudeApiPoolPage.module.scss';
 
 const pageSizes = ['25', '50', '100', '200'];
-const poolStoreName = 'claude-api-pool.db';
 const statusOptions = [
   { value: '', label: '全部状态' },
   { value: 'enabled', label: '启用' },
@@ -292,7 +295,8 @@ const getErrorMessage = (error: unknown) =>
 const formatJson = (value: unknown) => {
   if (value === undefined || value === null) return '';
   if (Array.isArray(value) && value.length === 0) return '';
-  if (!Array.isArray(value) && typeof value === 'object' && Object.keys(value).length === 0) return '';
+  if (!Array.isArray(value) && typeof value === 'object' && Object.keys(value).length === 0)
+    return '';
   return JSON.stringify(value, null, 2);
 };
 
@@ -309,8 +313,12 @@ const configToVirtualCacheDraft = (config: ClaudeAPIPoolConfig): VirtualCacheDra
     enabled: virtualCache.enabled,
     mode: virtualCache.mode === 'forced' ? 'forced' : 'natural',
     hitRate: String(Math.round((virtualCache.hit_rate || 0) * 1000) / 10),
-    targetCacheReuseRatio: String(Math.round((virtualCache.target_cache_reuse_ratio || 0) * 1000) / 10),
-    contextShrinkResetRatio: String(Math.round((virtualCache.context_shrink_reset_ratio || 0) * 1000) / 10),
+    targetCacheReuseRatio: String(
+      Math.round((virtualCache.target_cache_reuse_ratio || 0) * 1000) / 10
+    ),
+    contextShrinkResetRatio: String(
+      Math.round((virtualCache.context_shrink_reset_ratio || 0) * 1000) / 10
+    ),
   };
 };
 
@@ -374,30 +382,47 @@ const routingDraftToConfig = (draft: RoutingDraft) => {
     overload_max_cooldown_ms: parseNonNegativeInt(draft.overloadMaxCooldownMS, '529 最大冷却'),
     same_account_retry_429: parseNonNegativeInt(draft.sameAccountRetry429, '429 同账号重试'),
     same_account_retry_529: parseNonNegativeInt(draft.sameAccountRetry529, '529 同账号重试'),
-    same_account_retry_delay_ms: parseNonNegativeInt(draft.sameAccountRetryDelayMS, '同账号重试间隔'),
+    same_account_retry_delay_ms: parseNonNegativeInt(
+      draft.sameAccountRetryDelayMS,
+      '同账号重试间隔'
+    ),
     cache_affinity_enabled: draft.cacheAffinityEnabled,
     cache_affinity_auto: draft.cacheAffinityAuto,
     cache_affinity_auto_profile: draft.cacheAffinityAutoProfile,
     account_capacity_profile: draft.accountCapacityProfile,
-    cache_affinity_min_cache_tokens: parseNonNegativeInt(draft.cacheAffinityMinTokens, '亲和最小缓存 Tokens'),
+    cache_affinity_min_cache_tokens: parseNonNegativeInt(
+      draft.cacheAffinityMinTokens,
+      '亲和最小缓存 Tokens'
+    ),
     cache_affinity_lanes: parseNonNegativeInt(draft.cacheAffinityLanes, '亲和 lanes'),
     cache_affinity_max_lanes: parseNonNegativeInt(draft.cacheAffinityMaxLanes, '亲和最大 lanes'),
     cache_affinity_wait_ms: parseNonNegativeInt(draft.cacheAffinityWaitMS, '亲和等待'),
     cache_affinity_ttl_ms: parseNonNegativeInt(draft.cacheAffinityTTLMS, '亲和 TTL'),
   };
-  if (config.rate_limit_max_cooldown_ms > 0 && config.rate_limit_max_cooldown_ms < config.rate_limit_cooldown_ms) {
+  if (
+    config.rate_limit_max_cooldown_ms > 0 &&
+    config.rate_limit_max_cooldown_ms < config.rate_limit_cooldown_ms
+  ) {
     throw new Error('429 最大冷却不能小于 429 初始冷却');
   }
-  if (config.overload_max_cooldown_ms > 0 && config.overload_max_cooldown_ms < config.overload_cooldown_ms) {
+  if (
+    config.overload_max_cooldown_ms > 0 &&
+    config.overload_max_cooldown_ms < config.overload_cooldown_ms
+  ) {
     throw new Error('529 最大冷却不能小于 529 初始冷却');
   }
-  if (config.cache_affinity_max_lanes > 0 && config.cache_affinity_max_lanes < config.cache_affinity_lanes) {
+  if (
+    config.cache_affinity_max_lanes > 0 &&
+    config.cache_affinity_max_lanes < config.cache_affinity_lanes
+  ) {
     throw new Error('亲和最大 lanes 不能小于亲和 lanes');
   }
   return config;
 };
 
-const poolDefaultsDraftToConfig = (draft: PoolDefaultsDraft): Pick<ClaudeAPIPoolConfig, 'defaults' | 'models'> => {
+const poolDefaultsDraftToConfig = (
+  draft: PoolDefaultsDraft
+): Pick<ClaudeAPIPoolConfig, 'defaults' | 'models'> => {
   const defaults: NonNullable<ClaudeAPIPoolConfig['defaults']> = {};
   if (draft.baseUrl.trim()) defaults['base-url'] = draft.baseUrl.trim();
   if (draft.proxyUrl.trim()) defaults['proxy-url'] = draft.proxyUrl.trim();
@@ -423,7 +448,11 @@ const virtualCacheDraftToConfig = (draft: VirtualCacheDraft) => {
     throw new Error('缓存命中率必须在 0 到 100 之间');
   }
   const targetCacheReusePercent = Number(draft.targetCacheReuseRatio.trim() || '0');
-  if (!Number.isFinite(targetCacheReusePercent) || targetCacheReusePercent < 0 || targetCacheReusePercent > 100) {
+  if (
+    !Number.isFinite(targetCacheReusePercent) ||
+    targetCacheReusePercent < 0 ||
+    targetCacheReusePercent > 100
+  ) {
     throw new Error('目标缓存复用率必须在 0 到 100 之间');
   }
   const shrinkResetPercent = Number(draft.contextShrinkResetRatio.trim() || '0');
@@ -439,7 +468,8 @@ const virtualCacheDraftToConfig = (draft: VirtualCacheDraft) => {
   };
 };
 
-const modelValue = (entry: { name?: string; alias?: string }) => (entry.alias || entry.name || '').trim();
+const modelValue = (entry: { name?: string; alias?: string }) =>
+  (entry.alias || entry.name || '').trim();
 
 const modelLabel = (entry: { name?: string; alias?: string }) => {
   const value = modelValue(entry);
@@ -507,7 +537,7 @@ const statusLabel = (status: string) => {
   return status || '-';
 };
 
-const formatPercent = (value?: number) => `${Math.round(((value || 0) * 100) * 10) / 10}%`;
+const formatPercent = (value?: number) => `${Math.round((value || 0) * 100 * 10) / 10}%`;
 const formatNumber = (value?: number) => new Intl.NumberFormat('zh-CN').format(value || 0);
 const formatMs = (value?: number) => (value && value > 0 ? `${Math.round(value)}ms` : '-');
 const formatTokenPair = (read?: number, created?: number) =>
@@ -566,8 +596,10 @@ const historyClass = (state?: string) => {
 export function ClaudeApiPoolPage() {
   const { showNotification, showConfirmation } = useNotificationStore();
   const [config, setConfig] = useState<ClaudeAPIPoolConfig>({ enabled: false });
-  const [poolDefaultsDraft, setPoolDefaultsDraft] = useState<PoolDefaultsDraft>(emptyPoolDefaultsDraft);
-  const [virtualCacheDraft, setVirtualCacheDraft] = useState<VirtualCacheDraft>(defaultVirtualCacheDraft);
+  const [poolDefaultsDraft, setPoolDefaultsDraft] =
+    useState<PoolDefaultsDraft>(emptyPoolDefaultsDraft);
+  const [virtualCacheDraft, setVirtualCacheDraft] =
+    useState<VirtualCacheDraft>(defaultVirtualCacheDraft);
   const [routingDraft, setRoutingDraft] = useState<RoutingDraft>(defaultRoutingDraft);
   const [items, setItems] = useState<ClaudeAPIPoolItem[]>([]);
   const [page, setPage] = useState(1);
@@ -590,7 +622,9 @@ export function ClaudeApiPoolPage() {
   const [importing, setImporting] = useState(false);
   const [quickImportContent, setQuickImportContent] = useState('');
   const [quickReplaceImport, setQuickReplaceImport] = useState(false);
-  const [quickImportPreview, setQuickImportPreview] = useState<ClaudeAPIPoolImportPreview | null>(null);
+  const [quickImportPreview, setQuickImportPreview] = useState<ClaudeAPIPoolImportPreview | null>(
+    null
+  );
   const [quickImporting, setQuickImporting] = useState(false);
   const [selectedPositions, setSelectedPositions] = useState<Set<number>>(new Set());
   const [batchUpdating, setBatchUpdating] = useState(false);
@@ -611,25 +645,34 @@ export function ClaudeApiPoolPage() {
     [items, selectedPositions]
   );
   const selectedCount = selectedItems.length;
-  const allPageSelected = items.length > 0 && items.every((item) => selectedPositions.has(item.position));
+  const allPageSelected =
+    items.length > 0 && items.every((item) => selectedPositions.has(item.position));
   const somePageSelected = items.some((item) => selectedPositions.has(item.position));
   const runtimeStats = config['runtime-stats'];
   const runtimeTotalAccounts = runtimeStats?.account_count || total;
   const affinityAutoPlan = runtimeStats?.affinity_auto_plan;
   const selectedAffinityProfile =
-    affinityAutoProfileOptions.find((option) => option.value === routingDraft.cacheAffinityAutoProfile) ||
-    affinityAutoProfileOptions[0];
+    affinityAutoProfileOptions.find(
+      (option) => option.value === routingDraft.cacheAffinityAutoProfile
+    ) || affinityAutoProfileOptions[0];
   const selectedCapacityProfile =
-    accountCapacityProfileOptions.find((option) => option.value === routingDraft.accountCapacityProfile) ||
-    accountCapacityProfileOptions[0];
+    accountCapacityProfileOptions.find(
+      (option) => option.value === routingDraft.accountCapacityProfile
+    ) || accountCapacityProfileOptions[0];
   const selectedAffinityTTL =
-    affinityTTLOptions.find((option) => option.value === routingDraft.cacheAffinityTTLMS) || affinityTTLOptions[0];
+    affinityTTLOptions.find((option) => option.value === routingDraft.cacheAffinityTTLMS) ||
+    affinityTTLOptions[0];
   const showAffinityAutoPlan = routingDraft.cacheAffinityAuto && affinityAutoPlan?.enabled;
-  const showRoutingAdvanced = !routingDraft.cacheAffinityAuto || routingDraft.accountCapacityProfile === 'custom' || routingAdvancedOpen;
+  const showRoutingAdvanced =
+    !routingDraft.cacheAffinityAuto ||
+    routingDraft.accountCapacityProfile === 'custom' ||
+    routingAdvancedOpen;
   const showAffinityAdvanced = !routingDraft.cacheAffinityAuto || affinityAdvancedOpen;
   const affinityLaneLabel = routingDraft.cacheAffinityAuto ? '最小 lanes' : '亲和 lanes';
   const affinityMaxLaneLabel = routingDraft.cacheAffinityAuto ? '最大 lanes' : '亲和最大 lanes';
-  const autoRefreshPaused = Boolean(editing || creatingItem || importOpen || testingItem || quickImporting);
+  const autoRefreshPaused = Boolean(
+    editing || creatingItem || importOpen || testingItem || quickImporting
+  );
   const publicModelCount = entriesToModels(poolDefaultsDraft.models).length;
   const publicHeaderCount = Object.keys(buildHeaderObject(poolDefaultsDraft.headers)).length;
   const modelOptions = useMemo(() => {
@@ -640,7 +683,12 @@ export function ClaudeApiPoolPage() {
         if (entry.alias) names.add(entry.alias);
       });
     });
-    return [{ value: '', label: '全部模型' }, ...Array.from(names).sort().map((name) => ({ value: name, label: name }))];
+    return [
+      { value: '', label: '全部模型' },
+      ...Array.from(names)
+        .sort()
+        .map((name) => ({ value: name, label: name })),
+    ];
   }, [items]);
   const testModelOptions = useMemo(() => {
     const options = (testingItem?.models || [])
@@ -725,6 +773,8 @@ export function ClaudeApiPoolPage() {
         path: result.path || config.path,
         import_path: result.import_path || config.import_path,
         storage: result.storage || config.storage,
+        storage_backend: result.storage_backend || config.storage_backend,
+        storage_schema: result.storage_schema || config.storage_schema,
         defaults: result.defaults || poolDefaults.defaults,
         models: result.models || poolDefaults.models,
         'virtual-cache': result['virtual-cache'] || virtualCache,
@@ -864,7 +914,10 @@ export function ClaudeApiPoolPage() {
       if (result.status === 'ok') {
         showNotification(`#${testingItem.position} 测试成功`, 'success');
       } else {
-        showNotification(`#${testingItem.position} 测试失败：${result.message || `HTTP ${result.status_code}`}`, 'error');
+        showNotification(
+          `#${testingItem.position} 测试失败：${result.message || `HTTP ${result.status_code}`}`,
+          'error'
+        );
       }
     } catch (err) {
       const message = getErrorMessage(err);
@@ -879,9 +932,15 @@ export function ClaudeApiPoolPage() {
     if (selectedItems.length === 0) return;
     setBatchUpdating(true);
     try {
-      const refs = selectedItems.map((item) => ({ position: item.position, item_hash: item.item_hash }));
+      const refs = selectedItems.map((item) => ({
+        position: item.position,
+        item_hash: item.item_hash,
+      }));
       const result = await claudeApiPoolApi.setDisabledBatch(refs, disabled);
-      showNotification(disabled ? `已禁用 ${result.updated} 个账号` : `已启用 ${result.updated} 个账号`, 'success');
+      showNotification(
+        disabled ? `已禁用 ${result.updated} 个账号` : `已启用 ${result.updated} 个账号`,
+        'success'
+      );
       clearSelection();
       await loadItems();
     } catch (err) {
@@ -914,7 +973,9 @@ export function ClaudeApiPoolPage() {
       const content = await claudeApiPoolApi.exportPool(format);
       downloadBlob({
         filename: `claude-api-pool.${format === 'json' ? 'json' : 'yaml'}`,
-        blob: new Blob([content], { type: format === 'json' ? 'application/json' : 'application/yaml' }),
+        blob: new Blob([content], {
+          type: format === 'json' ? 'application/json' : 'application/yaml',
+        }),
       });
       showNotification('已导出 Claude API 池', 'success');
     } catch (err) {
@@ -943,7 +1004,11 @@ export function ClaudeApiPoolPage() {
     }
     setQuickImporting(true);
     try {
-      const result = await claudeApiPoolApi.importPool(quickImportContent, quickReplaceImport, true);
+      const result = await claudeApiPoolApi.importPool(
+        quickImportContent,
+        quickReplaceImport,
+        true
+      );
       if ('items' in result) {
         setQuickImportPreview(result);
       }
@@ -961,7 +1026,11 @@ export function ClaudeApiPoolPage() {
     }
     setQuickImporting(true);
     try {
-      const result = await claudeApiPoolApi.importPool(quickImportContent, quickReplaceImport, false);
+      const result = await claudeApiPoolApi.importPool(
+        quickImportContent,
+        quickReplaceImport,
+        false
+      );
       if ('imported' in result) {
         showNotification(`已导入 ${result.imported} 个账号`, 'success');
       }
@@ -1024,7 +1093,7 @@ export function ClaudeApiPoolPage() {
           <div className={styles.meta}>
             <span>{formatNumber(total)} 个账号</span>
             <span>{config.enabled ? '运行中' : '已停用'}</span>
-            <span className={styles.mono}>{config.path || poolStoreName}</span>
+            <span className={styles.mono}>PostgreSQL · {config.storage_schema || 'public'}</span>
           </div>
         </div>
         <div className={styles.headerActions}>
@@ -1035,7 +1104,11 @@ export function ClaudeApiPoolPage() {
             ariaLabel="选择自动刷新间隔"
           />
           <span className={styles.refreshMeta}>
-            {autoRefreshPaused ? '自动刷新已暂停' : lastRefreshAt ? `刷新 ${lastRefreshAt.toLocaleTimeString()}` : '尚未刷新'}
+            {autoRefreshPaused
+              ? '自动刷新已暂停'
+              : lastRefreshAt
+                ? `刷新 ${lastRefreshAt.toLocaleTimeString()}`
+                : '尚未刷新'}
           </span>
           <Button variant="secondary" onClick={refreshAll}>
             <IconRefreshCw size={16} /> 刷新
@@ -1059,32 +1132,48 @@ export function ClaudeApiPoolPage() {
         </div>
         <div className={styles.statItem}>
           <span>RPM</span>
-          <strong>{formatNumber(runtimeStats?.rpm_used)}{runtimeStats?.rpm_limit ? ` / ${formatNumber(runtimeStats.rpm_limit)}` : ''}</strong>
+          <strong>
+            {formatNumber(runtimeStats?.rpm_used)}
+            {runtimeStats?.rpm_limit ? ` / ${formatNumber(runtimeStats.rpm_limit)}` : ''}
+          </strong>
           <small>滚动窗口</small>
         </div>
         <div className={styles.statItem}>
           <span>真实缓存率</span>
           <strong>{formatPercent(runtimeStats?.real_cache_ratio)}</strong>
-          <small>{formatTokenPair(runtimeStats?.cache_read_tokens, runtimeStats?.cache_creation_tokens)}</small>
+          <small>
+            {formatTokenPair(runtimeStats?.cache_read_tokens, runtimeStats?.cache_creation_tokens)}
+          </small>
         </div>
         <div className={styles.statItem}>
           <span>亲和 Key / lanes</span>
-          <strong>{formatNumber(runtimeStats?.active_affinity_keys)} / {formatNumber(runtimeStats?.warm_lanes)}</strong>
+          <strong>
+            {formatNumber(runtimeStats?.active_affinity_keys)} /{' '}
+            {formatNumber(runtimeStats?.warm_lanes)}
+          </strong>
           <small>缓存路由</small>
         </div>
         <div className={styles.statItem}>
           <span>成功率</span>
           <strong>{formatPercent(runtimeStats?.success_rate)}</strong>
-          <small>{formatNumber(runtimeStats?.success_count)} / {formatNumber(runtimeStats?.request_count)}</small>
+          <small>
+            {formatNumber(runtimeStats?.success_count)} /{' '}
+            {formatNumber(runtimeStats?.request_count)}
+          </small>
         </div>
       </div>
 
       <section className={styles.configIntro}>
         <div className={styles.configIntroMain}>
           <div>
-            <span className={styles.sectionKicker}><IconSettings size={15} /> 基础配置</span>
+            <span className={styles.sectionKicker}>
+              <IconSettings size={15} /> 基础配置
+            </span>
             <h2>公共配置入口</h2>
-            <p>Defaults、Models、账号导入分开管理。账号未单独覆盖时，会继承公共 Defaults 和公共 Models。</p>
+            <p>
+              Defaults、Models、账号导入分开管理。账号未单独覆盖时，会继承公共 Defaults 和公共
+              Models。
+            </p>
           </div>
           <div className={styles.configSwitches}>
             <ToggleSwitch
@@ -1104,8 +1193,8 @@ export function ClaudeApiPoolPage() {
         </div>
         <div className={styles.storageStrip}>
           <div>
-            <span>SQLite 主存储</span>
-            <strong className={styles.mono}>{config.path || poolStoreName}</strong>
+            <span>PostgreSQL 主存储</span>
+            <strong className={styles.mono}>Schema: {config.storage_schema || 'public'}</strong>
           </div>
           <div>
             <span>当前公共模型</span>
@@ -1136,13 +1225,17 @@ export function ClaudeApiPoolPage() {
             <Input
               label="Base URL"
               value={poolDefaultsDraft.baseUrl}
-              onChange={(event) => setPoolDefaultsDraft((prev) => ({ ...prev, baseUrl: event.target.value }))}
+              onChange={(event) =>
+                setPoolDefaultsDraft((prev) => ({ ...prev, baseUrl: event.target.value }))
+              }
               placeholder="留空使用默认 Anthropic"
             />
             <Input
               label="代理 URL"
               value={poolDefaultsDraft.proxyUrl}
-              onChange={(event) => setPoolDefaultsDraft((prev) => ({ ...prev, proxyUrl: event.target.value }))}
+              onChange={(event) =>
+                setPoolDefaultsDraft((prev) => ({ ...prev, proxyUrl: event.target.value }))
+              }
               placeholder="留空不走独立代理"
             />
             <Input
@@ -1150,13 +1243,17 @@ export function ClaudeApiPoolPage() {
               type="number"
               step="1"
               value={poolDefaultsDraft.priority}
-              onChange={(event) => setPoolDefaultsDraft((prev) => ({ ...prev, priority: event.target.value }))}
+              onChange={(event) =>
+                setPoolDefaultsDraft((prev) => ({ ...prev, priority: event.target.value }))
+              }
               placeholder="0"
             />
             <div className={styles.inlineToggleField}>
               <ToggleSwitch
                 checked={poolDefaultsDraft.disableCooling}
-                onChange={(disableCooling) => setPoolDefaultsDraft((prev) => ({ ...prev, disableCooling }))}
+                onChange={(disableCooling) =>
+                  setPoolDefaultsDraft((prev) => ({ ...prev, disableCooling }))
+                }
                 label="默认禁用冷却"
               />
               <span>只影响没有账号级覆盖的账号。</span>
@@ -1165,7 +1262,9 @@ export function ClaudeApiPoolPage() {
 
           <div className={styles.editorBlock}>
             <div className={styles.editorBlockHead}>
-              <span><IconFileText size={15} /> 公共 Headers</span>
+              <span>
+                <IconFileText size={15} /> 公共 Headers
+              </span>
               <small>例如 anthropic-version、自定义代理头，Workspace 不建议放这里。</small>
             </div>
             <HeaderInputList
@@ -1241,12 +1340,21 @@ export function ClaudeApiPoolPage() {
             placeholder={`api-key-1-----wrkspc_xxx\napi-key-2-----wrkspc_yyy`}
           />
           <div className={styles.importControlRow}>
-            <ToggleSwitch checked={quickReplaceImport} onChange={setQuickReplaceImport} label="替换现有账号" />
+            <ToggleSwitch
+              checked={quickReplaceImport}
+              onChange={setQuickReplaceImport}
+              label="替换现有账号"
+            />
             <div className={styles.importActions}>
               <Button variant="secondary" size="sm" onClick={() => setImportOpen(true)}>
                 <IconUpload size={16} /> 备份 / 迁移
               </Button>
-              <Button variant="secondary" size="sm" onClick={previewQuickImport} loading={quickImporting}>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={previewQuickImport}
+                loading={quickImporting}
+              >
                 预览
               </Button>
               <Button size="sm" onClick={runQuickImport} loading={quickImporting}>
@@ -1266,7 +1374,9 @@ export function ClaudeApiPoolPage() {
         <section className={styles.virtualCacheBar}>
           <div className={styles.virtualCacheHeader}>
             <div>
-              <span className={styles.sectionKicker}><IconChartLine size={15} /> 虚拟账本</span>
+              <span className={styles.sectionKicker}>
+                <IconChartLine size={15} /> 虚拟账本
+              </span>
               <h2>对外缓存口径</h2>
             </div>
             <div className={styles.sectionStatus}>
@@ -1302,7 +1412,9 @@ export function ClaudeApiPoolPage() {
               max="100"
               step="0.1"
               value={virtualCacheDraft.hitRate}
-              onChange={(event) => setVirtualCacheDraft((prev) => ({ ...prev, hitRate: event.target.value }))}
+              onChange={(event) =>
+                setVirtualCacheDraft((prev) => ({ ...prev, hitRate: event.target.value }))
+              }
             />
             <Input
               label="目标复用率 %"
@@ -1311,7 +1423,12 @@ export function ClaudeApiPoolPage() {
               max="100"
               step="0.1"
               value={virtualCacheDraft.targetCacheReuseRatio}
-              onChange={(event) => setVirtualCacheDraft((prev) => ({ ...prev, targetCacheReuseRatio: event.target.value }))}
+              onChange={(event) =>
+                setVirtualCacheDraft((prev) => ({
+                  ...prev,
+                  targetCacheReuseRatio: event.target.value,
+                }))
+              }
             />
             <Input
               label="压缩重置比例 %"
@@ -1320,7 +1437,12 @@ export function ClaudeApiPoolPage() {
               max="100"
               step="0.1"
               value={virtualCacheDraft.contextShrinkResetRatio}
-              onChange={(event) => setVirtualCacheDraft((prev) => ({ ...prev, contextShrinkResetRatio: event.target.value }))}
+              onChange={(event) =>
+                setVirtualCacheDraft((prev) => ({
+                  ...prev,
+                  contextShrinkResetRatio: event.target.value,
+                }))
+              }
             />
           </div>
         </section>
@@ -1328,18 +1450,24 @@ export function ClaudeApiPoolPage() {
         <section className={styles.routingBar}>
           <div className={styles.routingTop}>
             <div>
-              <span className={styles.sectionKicker}><IconShield size={15} /> 路由保护</span>
+              <span className={styles.sectionKicker}>
+                <IconShield size={15} /> 路由保护
+              </span>
               <h2>限速、换号与真实缓存亲和</h2>
             </div>
             <div className={styles.affinitySwitchRow}>
               <ToggleSwitch
                 checked={routingDraft.cacheAffinityEnabled}
-                onChange={(cacheAffinityEnabled) => setRoutingDraft((prev) => ({ ...prev, cacheAffinityEnabled }))}
+                onChange={(cacheAffinityEnabled) =>
+                  setRoutingDraft((prev) => ({ ...prev, cacheAffinityEnabled }))
+                }
                 label="启用缓存亲和"
               />
               <ToggleSwitch
                 checked={routingDraft.cacheAffinityAuto}
-                onChange={(cacheAffinityAuto) => setRoutingDraft((prev) => ({ ...prev, cacheAffinityAuto }))}
+                onChange={(cacheAffinityAuto) =>
+                  setRoutingDraft((prev) => ({ ...prev, cacheAffinityAuto }))
+                }
                 label="自动策略"
               />
             </div>
@@ -1377,7 +1505,9 @@ export function ClaudeApiPoolPage() {
                   <Select
                     value={routingDraft.cacheAffinityTTLMS}
                     options={affinityTTLOptions}
-                    onChange={(cacheAffinityTTLMS) => setRoutingDraft((prev) => ({ ...prev, cacheAffinityTTLMS }))}
+                    onChange={(cacheAffinityTTLMS) =>
+                      setRoutingDraft((prev) => ({ ...prev, cacheAffinityTTLMS }))
+                    }
                     ariaLabel="选择真实缓存亲和 TTL"
                   />
                   <small>同一缓存 key 在这个时间内优先回到相同 lane。</small>
@@ -1395,7 +1525,9 @@ export function ClaudeApiPoolPage() {
                 </div>
                 <div>
                   <span>压力</span>
-                  <strong>{showAffinityAutoPlan ? formatPercent(affinityAutoPlan?.pressure) : '-'}</strong>
+                  <strong>
+                    {showAffinityAutoPlan ? formatPercent(affinityAutoPlan?.pressure) : '-'}
+                  </strong>
                   <small>RPM、并发、错误率综合</small>
                 </div>
                 <div className={styles.affinityPlanReason}>
@@ -1421,8 +1553,14 @@ export function ClaudeApiPoolPage() {
               </div>
               <div>
                 <span>运行窗口</span>
-                <strong>{formatNumber(runtimeStats?.rpm_used)}{runtimeStats?.rpm_limit ? ` / ${formatNumber(runtimeStats.rpm_limit)}` : ''}</strong>
-                <small>并发 {formatNumber(runtimeStats?.in_flight)} · 可用 {formatNumber(runtimeStats?.available_accounts)} · TTL {selectedAffinityTTL.label}</small>
+                <strong>
+                  {formatNumber(runtimeStats?.rpm_used)}
+                  {runtimeStats?.rpm_limit ? ` / ${formatNumber(runtimeStats.rpm_limit)}` : ''}
+                </strong>
+                <small>
+                  并发 {formatNumber(runtimeStats?.in_flight)} · 可用{' '}
+                  {formatNumber(runtimeStats?.available_accounts)} · TTL {selectedAffinityTTL.label}
+                </small>
               </div>
             </div>
           ) : (
@@ -1444,14 +1582,14 @@ export function ClaudeApiPoolPage() {
               </button>
             )}
             {routingDraft.cacheAffinityAuto && (
-                <button
-                  type="button"
-                  className={styles.affinityAdvancedToggle}
-                  onClick={() => setAffinityAdvancedOpen((open) => !open)}
-                >
-                  {affinityAdvancedOpen ? <IconChevronUp size={15} /> : <IconChevronDown size={15} />}
-                  亲和高级配置
-                </button>
+              <button
+                type="button"
+                className={styles.affinityAdvancedToggle}
+                onClick={() => setAffinityAdvancedOpen((open) => !open)}
+              >
+                {affinityAdvancedOpen ? <IconChevronUp size={15} /> : <IconChevronDown size={15} />}
+                亲和高级配置
+              </button>
             )}
           </div>
 
@@ -1463,7 +1601,9 @@ export function ClaudeApiPoolPage() {
                 min="0"
                 step="1"
                 value={routingDraft.perAccountRPM}
-                onChange={(event) => setRoutingDraft((prev) => ({ ...prev, perAccountRPM: event.target.value }))}
+                onChange={(event) =>
+                  setRoutingDraft((prev) => ({ ...prev, perAccountRPM: event.target.value }))
+                }
               />
               <Input
                 label="每账号并发"
@@ -1471,7 +1611,12 @@ export function ClaudeApiPoolPage() {
                 min="0"
                 step="1"
                 value={routingDraft.perAccountConcurrency}
-                onChange={(event) => setRoutingDraft((prev) => ({ ...prev, perAccountConcurrency: event.target.value }))}
+                onChange={(event) =>
+                  setRoutingDraft((prev) => ({
+                    ...prev,
+                    perAccountConcurrency: event.target.value,
+                  }))
+                }
               />
               <Input
                 label="最大换号次数"
@@ -1479,7 +1624,9 @@ export function ClaudeApiPoolPage() {
                 min="0"
                 step="1"
                 value={routingDraft.maxSwitches}
-                onChange={(event) => setRoutingDraft((prev) => ({ ...prev, maxSwitches: event.target.value }))}
+                onChange={(event) =>
+                  setRoutingDraft((prev) => ({ ...prev, maxSwitches: event.target.value }))
+                }
               />
               <Input
                 label="换号间隔 ms"
@@ -1487,7 +1634,9 @@ export function ClaudeApiPoolPage() {
                 min="0"
                 step="1"
                 value={routingDraft.switchDelayMS}
-                onChange={(event) => setRoutingDraft((prev) => ({ ...prev, switchDelayMS: event.target.value }))}
+                onChange={(event) =>
+                  setRoutingDraft((prev) => ({ ...prev, switchDelayMS: event.target.value }))
+                }
               />
               <Input
                 label="429 初始冷却 ms"
@@ -1495,7 +1644,9 @@ export function ClaudeApiPoolPage() {
                 min="0"
                 step="1"
                 value={routingDraft.rateLimitCooldownMS}
-                onChange={(event) => setRoutingDraft((prev) => ({ ...prev, rateLimitCooldownMS: event.target.value }))}
+                onChange={(event) =>
+                  setRoutingDraft((prev) => ({ ...prev, rateLimitCooldownMS: event.target.value }))
+                }
               />
               <Input
                 label="429 最大冷却 ms"
@@ -1503,7 +1654,12 @@ export function ClaudeApiPoolPage() {
                 min="0"
                 step="1"
                 value={routingDraft.rateLimitMaxCooldownMS}
-                onChange={(event) => setRoutingDraft((prev) => ({ ...prev, rateLimitMaxCooldownMS: event.target.value }))}
+                onChange={(event) =>
+                  setRoutingDraft((prev) => ({
+                    ...prev,
+                    rateLimitMaxCooldownMS: event.target.value,
+                  }))
+                }
               />
               <Input
                 label="529 初始冷却 ms"
@@ -1511,7 +1667,9 @@ export function ClaudeApiPoolPage() {
                 min="0"
                 step="1"
                 value={routingDraft.overloadCooldownMS}
-                onChange={(event) => setRoutingDraft((prev) => ({ ...prev, overloadCooldownMS: event.target.value }))}
+                onChange={(event) =>
+                  setRoutingDraft((prev) => ({ ...prev, overloadCooldownMS: event.target.value }))
+                }
               />
               <Input
                 label="529 最大冷却 ms"
@@ -1519,7 +1677,12 @@ export function ClaudeApiPoolPage() {
                 min="0"
                 step="1"
                 value={routingDraft.overloadMaxCooldownMS}
-                onChange={(event) => setRoutingDraft((prev) => ({ ...prev, overloadMaxCooldownMS: event.target.value }))}
+                onChange={(event) =>
+                  setRoutingDraft((prev) => ({
+                    ...prev,
+                    overloadMaxCooldownMS: event.target.value,
+                  }))
+                }
               />
               <Input
                 label="429 同号重试"
@@ -1527,7 +1690,9 @@ export function ClaudeApiPoolPage() {
                 min="0"
                 step="1"
                 value={routingDraft.sameAccountRetry429}
-                onChange={(event) => setRoutingDraft((prev) => ({ ...prev, sameAccountRetry429: event.target.value }))}
+                onChange={(event) =>
+                  setRoutingDraft((prev) => ({ ...prev, sameAccountRetry429: event.target.value }))
+                }
               />
               <Input
                 label="529 同号重试"
@@ -1535,7 +1700,9 @@ export function ClaudeApiPoolPage() {
                 min="0"
                 step="1"
                 value={routingDraft.sameAccountRetry529}
-                onChange={(event) => setRoutingDraft((prev) => ({ ...prev, sameAccountRetry529: event.target.value }))}
+                onChange={(event) =>
+                  setRoutingDraft((prev) => ({ ...prev, sameAccountRetry529: event.target.value }))
+                }
               />
               <Input
                 label="同号重试间隔 ms"
@@ -1543,7 +1710,12 @@ export function ClaudeApiPoolPage() {
                 min="0"
                 step="1"
                 value={routingDraft.sameAccountRetryDelayMS}
-                onChange={(event) => setRoutingDraft((prev) => ({ ...prev, sameAccountRetryDelayMS: event.target.value }))}
+                onChange={(event) =>
+                  setRoutingDraft((prev) => ({
+                    ...prev,
+                    sameAccountRetryDelayMS: event.target.value,
+                  }))
+                }
               />
             </div>
           )}
@@ -1556,7 +1728,12 @@ export function ClaudeApiPoolPage() {
                 min="0"
                 step="1"
                 value={routingDraft.cacheAffinityMinTokens}
-                onChange={(event) => setRoutingDraft((prev) => ({ ...prev, cacheAffinityMinTokens: event.target.value }))}
+                onChange={(event) =>
+                  setRoutingDraft((prev) => ({
+                    ...prev,
+                    cacheAffinityMinTokens: event.target.value,
+                  }))
+                }
               />
               <Input
                 label={affinityLaneLabel}
@@ -1564,7 +1741,9 @@ export function ClaudeApiPoolPage() {
                 min="1"
                 step="1"
                 value={routingDraft.cacheAffinityLanes}
-                onChange={(event) => setRoutingDraft((prev) => ({ ...prev, cacheAffinityLanes: event.target.value }))}
+                onChange={(event) =>
+                  setRoutingDraft((prev) => ({ ...prev, cacheAffinityLanes: event.target.value }))
+                }
               />
               <Input
                 label={affinityMaxLaneLabel}
@@ -1572,7 +1751,12 @@ export function ClaudeApiPoolPage() {
                 min="1"
                 step="1"
                 value={routingDraft.cacheAffinityMaxLanes}
-                onChange={(event) => setRoutingDraft((prev) => ({ ...prev, cacheAffinityMaxLanes: event.target.value }))}
+                onChange={(event) =>
+                  setRoutingDraft((prev) => ({
+                    ...prev,
+                    cacheAffinityMaxLanes: event.target.value,
+                  }))
+                }
               />
               <Input
                 label="亲和等待 ms"
@@ -1580,7 +1764,9 @@ export function ClaudeApiPoolPage() {
                 min="0"
                 step="1"
                 value={routingDraft.cacheAffinityWaitMS}
-                onChange={(event) => setRoutingDraft((prev) => ({ ...prev, cacheAffinityWaitMS: event.target.value }))}
+                onChange={(event) =>
+                  setRoutingDraft((prev) => ({ ...prev, cacheAffinityWaitMS: event.target.value }))
+                }
               />
               <Input
                 label="亲和 TTL ms"
@@ -1588,7 +1774,9 @@ export function ClaudeApiPoolPage() {
                 min="0"
                 step="1"
                 value={routingDraft.cacheAffinityTTLMS}
-                onChange={(event) => setRoutingDraft((prev) => ({ ...prev, cacheAffinityTTLMS: event.target.value }))}
+                onChange={(event) =>
+                  setRoutingDraft((prev) => ({ ...prev, cacheAffinityTTLMS: event.target.value }))
+                }
               />
             </div>
           )}
@@ -1597,7 +1785,9 @@ export function ClaudeApiPoolPage() {
 
       <div className={styles.toolbar}>
         <div className={styles.toolbarTitle}>
-          <span className={styles.sectionKicker}><IconSearch size={15} /> 账号监控</span>
+          <span className={styles.sectionKicker}>
+            <IconSearch size={15} /> 账号监控
+          </span>
           <strong>{formatNumber(total)} 条记录</strong>
         </div>
         <Input
@@ -1609,16 +1799,42 @@ export function ClaudeApiPoolPage() {
           placeholder="搜索 Key、Base URL、模型、Header"
           aria-label="搜索 Claude API 池账号"
         />
-        <Select value={model} onChange={(value) => { setPage(1); setModel(value); }} options={modelOptions} />
-        <Select value={status} onChange={(value) => { setPage(1); setStatus(value); }} options={statusOptions} />
+        <Select
+          value={model}
+          onChange={(value) => {
+            setPage(1);
+            setModel(value);
+          }}
+          options={modelOptions}
+        />
+        <Select
+          value={status}
+          onChange={(value) => {
+            setPage(1);
+            setStatus(value);
+          }}
+          options={statusOptions}
+        />
         <div className={styles.toolbarActions}>
           <Button variant="secondary" size="sm" onClick={openCreate}>
             <IconKey size={16} /> 新增账号
           </Button>
-          <Button variant="secondary" size="sm" onClick={() => batchSetDisabled(false)} disabled={selectedCount === 0 || batchUpdating} loading={batchUpdating}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => batchSetDisabled(false)}
+            disabled={selectedCount === 0 || batchUpdating}
+            loading={batchUpdating}
+          >
             <IconPower size={16} /> 批量启用
           </Button>
-          <Button variant="secondary" size="sm" onClick={() => batchSetDisabled(true)} disabled={selectedCount === 0 || batchUpdating} loading={batchUpdating}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => batchSetDisabled(true)}
+            disabled={selectedCount === 0 || batchUpdating}
+            loading={batchUpdating}
+          >
             <IconPower size={16} /> 批量禁用
           </Button>
           <Button variant="secondary" size="sm" onClick={clearLedger}>
@@ -1684,7 +1900,10 @@ export function ClaudeApiPoolPage() {
                     <div className={styles.accountCell}>
                       <span className={styles.accountIndex}>#{item.position}</span>
                       <div>
-                        <div className={`${styles.truncate} ${styles.mono}`} title={item['base-url'] || '-'}>
+                        <div
+                          className={`${styles.truncate} ${styles.mono}`}
+                          title={item['base-url'] || '-'}
+                        >
                           {item['base-url'] || '默认 Anthropic'}
                         </div>
                         <div className={styles.keyPreview}>{item.api_key_preview}</div>
@@ -1694,38 +1913,64 @@ export function ClaudeApiPoolPage() {
                   <td className={styles.modelsCell}>
                     <div className={styles.pillList}>
                       {(item.models || []).slice(0, 4).map((entry) => (
-                        <span className={styles.pill} key={`${entry.name}:${entry.alias || ''}`} title={entry.alias || entry.name}>
+                        <span
+                          className={styles.pill}
+                          key={`${entry.name}:${entry.alias || ''}`}
+                          title={entry.alias || entry.name}
+                        >
                           {entry.alias || entry.name}
                         </span>
                       ))}
-                      {(item.models || []).length > 4 && <span className={styles.pill}>+{(item.models || []).length - 4}</span>}
+                      {(item.models || []).length > 4 && (
+                        <span className={styles.pill}>+{(item.models || []).length - 4}</span>
+                      )}
                     </div>
                   </td>
                   <td className={styles.headersCell}>
                     <div className={styles.pillList}>
-                      {Object.keys(item.headers || {}).slice(0, 3).map((key) => (
-                        <span className={styles.pill} key={key} title={`${key}: ${(item.headers || {})[key]}`}>
-                          {key}
+                      {Object.keys(item.headers || {})
+                        .slice(0, 3)
+                        .map((key) => (
+                          <span
+                            className={styles.pill}
+                            key={key}
+                            title={`${key}: ${(item.headers || {})[key]}`}
+                          >
+                            {key}
+                          </span>
+                        ))}
+                      {Object.keys(item.headers || {}).length > 3 && (
+                        <span className={styles.pill}>
+                          +{Object.keys(item.headers || {}).length - 3}
                         </span>
-                      ))}
-                      {Object.keys(item.headers || {}).length > 3 && <span className={styles.pill}>+{Object.keys(item.headers || {}).length - 3}</span>}
+                      )}
                     </div>
                   </td>
                   <td className={styles.smallNumberCell}>{item.priority}</td>
                   <td className={styles.smallNumberCell}>{item.in_flight}</td>
                   <td className={styles.smallNumberCell}>
-                    {item.rpm_limit > 0 ? `${item.rpm_used}/${item.rpm_limit}` : item.rpm_used || '-'}
+                    {item.rpm_limit > 0
+                      ? `${item.rpm_used}/${item.rpm_limit}`
+                      : item.rpm_used || '-'}
                   </td>
                   <td className={styles.metricsCell}>
                     <div className={styles.metricStack}>
                       <strong>{formatPercent(item.metrics?.success_rate)}</strong>
-                      <span>{formatNumber(item.metrics?.success_count)} / {formatNumber(item.metrics?.request_count)}</span>
+                      <span>
+                        {formatNumber(item.metrics?.success_count)} /{' '}
+                        {formatNumber(item.metrics?.request_count)}
+                      </span>
                     </div>
                   </td>
                   <td className={styles.metricsCell}>
                     <div className={styles.metricStack}>
                       <strong>{formatPercent(item.metrics?.real_cache_ratio)}</strong>
-                      <span>{formatTokenPair(item.metrics?.cache_read_tokens, item.metrics?.cache_creation_tokens)}</span>
+                      <span>
+                        {formatTokenPair(
+                          item.metrics?.cache_read_tokens,
+                          item.metrics?.cache_creation_tokens
+                        )}
+                      </span>
                     </div>
                   </td>
                   <td className={styles.historyCell}>
@@ -1746,19 +1991,49 @@ export function ClaudeApiPoolPage() {
                   <td className={styles.smallNumberCell}>{item.warm_keys}</td>
                   <td className={styles.actionsCell}>
                     <div className={styles.rowActions}>
-                      <Button className={styles.iconButton} variant="secondary" size="sm" onClick={() => openEdit(item)} title="编辑">
+                      <Button
+                        className={styles.iconButton}
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => openEdit(item)}
+                        title="编辑"
+                      >
                         <IconPencil size={16} />
                       </Button>
-                      <Button className={styles.iconButton} variant="secondary" size="sm" onClick={() => openTest(item)} title="测试连接">
+                      <Button
+                        className={styles.iconButton}
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => openTest(item)}
+                        title="测试连接"
+                      >
                         <IconPlay size={16} />
                       </Button>
-                      <Button className={styles.iconButton} variant="secondary" size="sm" onClick={() => toggleItem(item)} title={item.status === 'disabled' ? '启用' : '禁用'}>
+                      <Button
+                        className={styles.iconButton}
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => toggleItem(item)}
+                        title={item.status === 'disabled' ? '启用' : '禁用'}
+                      >
                         <IconPower size={16} />
                       </Button>
-                      <Button className={styles.iconButton} variant="secondary" size="sm" onClick={() => claudeApiPoolApi.resetCooling(item.position).then(loadItems)} title="重置冷却">
+                      <Button
+                        className={styles.iconButton}
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => claudeApiPoolApi.resetCooling(item.position).then(loadItems)}
+                        title="重置冷却"
+                      >
                         <IconRefreshCw size={16} />
                       </Button>
-                      <Button className={styles.iconButton} variant="danger" size="sm" onClick={() => deleteItem(item)} title="删除">
+                      <Button
+                        className={styles.iconButton}
+                        variant="danger"
+                        size="sm"
+                        onClick={() => deleteItem(item)}
+                        title="删除"
+                      >
                         <IconTrash2 size={16} />
                       </Button>
                     </div>
@@ -1770,15 +2045,38 @@ export function ClaudeApiPoolPage() {
         </div>
         {loading && <div className={styles.emptyState}>加载中...</div>}
         {!loading && error && <div className={styles.errorState}>{error}</div>}
-        {!loading && !error && items.length === 0 && <div className={styles.emptyState}>暂无池账号</div>}
+        {!loading && !error && items.length === 0 && (
+          <div className={styles.emptyState}>暂无池账号</div>
+        )}
         <div className={styles.pagination}>
           <span>
             第 {page} / {totalPages} 页
           </span>
           <div className={styles.paginationControls}>
-            <Select value={String(pageSize)} options={pageSizes.map((size) => ({ value: size, label: `${size} 条/页` }))} onChange={(value) => { setPage(1); setPageSize(Number(value)); }} />
-            <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => setPage((prev) => Math.max(1, prev - 1))}>上一页</Button>
-            <Button variant="secondary" size="sm" disabled={page >= totalPages} onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}>下一页</Button>
+            <Select
+              value={String(pageSize)}
+              options={pageSizes.map((size) => ({ value: size, label: `${size} 条/页` }))}
+              onChange={(value) => {
+                setPage(1);
+                setPageSize(Number(value));
+              }}
+            />
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={page <= 1}
+              onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+            >
+              上一页
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={page >= totalPages}
+              onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+            >
+              下一页
+            </Button>
           </div>
         </div>
       </div>
@@ -1790,13 +2088,22 @@ export function ClaudeApiPoolPage() {
         width={760}
         footer={
           <div className={styles.modalFooter}>
-            <Button variant="ghost" onClick={closeEdit} disabled={savingItem}>取消</Button>
-            <Button onClick={saveItem} loading={savingItem}>保存</Button>
+            <Button variant="ghost" onClick={closeEdit} disabled={savingItem}>
+              取消
+            </Button>
+            <Button onClick={saveItem} loading={savingItem}>
+              保存
+            </Button>
           </div>
         }
       >
         <div className={styles.modalGrid}>
-          <Input label="API key" value={draft.apiKey} onChange={(event) => setDraft((prev) => ({ ...prev, apiKey: event.target.value }))} className={styles.mono} />
+          <Input
+            label="API key"
+            value={draft.apiKey}
+            onChange={(event) => setDraft((prev) => ({ ...prev, apiKey: event.target.value }))}
+            className={styles.mono}
+          />
           <Input
             label="Workspace ID"
             value={draft.workspaceId}
@@ -1826,22 +2133,54 @@ export function ClaudeApiPoolPage() {
             onChange={(event) => setDraft((prev) => ({ ...prev, priority: event.target.value }))}
             placeholder={poolDefaultsDraft.priority || '继承公共优先级'}
           />
-          <ToggleSwitch checked={draft.disableCooling} onChange={(value) => setDraft((prev) => ({ ...prev, disableCooling: value }))} label="禁用冷却" />
-          <ToggleSwitch checked={draft.disabled} onChange={(value) => setDraft((prev) => ({ ...prev, disabled: value }))} label="禁用账号" />
-          <ToggleSwitch checked={draft.experimentalCCHSigning} onChange={(value) => setDraft((prev) => ({ ...prev, experimentalCCHSigning: value }))} label="CCH 签名" />
+          <ToggleSwitch
+            checked={draft.disableCooling}
+            onChange={(value) => setDraft((prev) => ({ ...prev, disableCooling: value }))}
+            label="禁用冷却"
+          />
+          <ToggleSwitch
+            checked={draft.disabled}
+            onChange={(value) => setDraft((prev) => ({ ...prev, disabled: value }))}
+            label="禁用账号"
+          />
+          <ToggleSwitch
+            checked={draft.experimentalCCHSigning}
+            onChange={(value) => setDraft((prev) => ({ ...prev, experimentalCCHSigning: value }))}
+            label="CCH 签名"
+          />
           <label className={styles.fullSpan}>
             <span>Headers JSON</span>
-            <textarea className={`input ${styles.textarea}`} value={draft.headersText} onChange={(event) => setDraft((prev) => ({ ...prev, headersText: event.target.value }))} />
-            <small className={styles.inheritHint}>这里是账号级额外 Headers；Workspace ID 会自动合并为 anthropic-workspace-id。</small>
+            <textarea
+              className={`input ${styles.textarea}`}
+              value={draft.headersText}
+              onChange={(event) =>
+                setDraft((prev) => ({ ...prev, headersText: event.target.value }))
+              }
+            />
+            <small className={styles.inheritHint}>
+              这里是账号级额外 Headers；Workspace ID 会自动合并为 anthropic-workspace-id。
+            </small>
           </label>
           <label className={styles.fullSpan}>
             <span>模型 JSON</span>
-            <textarea className={`input ${styles.textarea}`} value={draft.modelsText} onChange={(event) => setDraft((prev) => ({ ...prev, modelsText: event.target.value }))} />
+            <textarea
+              className={`input ${styles.textarea}`}
+              value={draft.modelsText}
+              onChange={(event) =>
+                setDraft((prev) => ({ ...prev, modelsText: event.target.value }))
+              }
+            />
             <small className={styles.inheritHint}>留空则继承公共模型列表。</small>
           </label>
           <label className={styles.fullSpan}>
             <span>排除模型 JSON</span>
-            <textarea className={`input ${styles.textarea}`} value={draft.excludedModelsText} onChange={(event) => setDraft((prev) => ({ ...prev, excludedModelsText: event.target.value }))} />
+            <textarea
+              className={`input ${styles.textarea}`}
+              value={draft.excludedModelsText}
+              onChange={(event) =>
+                setDraft((prev) => ({ ...prev, excludedModelsText: event.target.value }))
+              }
+            />
           </label>
         </div>
       </Modal>
@@ -1853,8 +2192,14 @@ export function ClaudeApiPoolPage() {
         width={760}
         footer={
           <div className={styles.modalFooter}>
-            <Button variant="ghost" onClick={closeTest} disabled={testing}>关闭</Button>
-            <Button onClick={runTest} loading={testing} disabled={!testingItem || testModelOptions.length === 0}>
+            <Button variant="ghost" onClick={closeTest} disabled={testing}>
+              关闭
+            </Button>
+            <Button
+              onClick={runTest}
+              loading={testing}
+              disabled={!testingItem || testModelOptions.length === 0}
+            >
               {testResult || testError ? '重试' : '开始测试'}
             </Button>
           </div>
@@ -1865,15 +2210,21 @@ export function ClaudeApiPoolPage() {
             <div className={styles.testSummary}>
               <div>
                 <span>账号</span>
-                <strong className={styles.mono}>#{testingItem.position} {testingItem.api_key_preview}</strong>
+                <strong className={styles.mono}>
+                  #{testingItem.position} {testingItem.api_key_preview}
+                </strong>
               </div>
               <div>
                 <span>状态</span>
-                <strong className={statusClass(testingItem.status)}>{statusLabel(testingItem.status)}</strong>
+                <strong className={statusClass(testingItem.status)}>
+                  {statusLabel(testingItem.status)}
+                </strong>
               </div>
               <div>
                 <span>Base URL</span>
-                <strong className={styles.mono}>{testingItem['base-url'] || '默认 Anthropic'}</strong>
+                <strong className={styles.mono}>
+                  {testingItem['base-url'] || '默认 Anthropic'}
+                </strong>
               </div>
             </div>
 
@@ -1898,7 +2249,9 @@ export function ClaudeApiPoolPage() {
             </div>
 
             {testModelOptions.length === 0 && (
-              <div className={styles.errorState}>这个账号没有可用模型，请先在顶层 models 或账号 models 中配置模型。</div>
+              <div className={styles.errorState}>
+                这个账号没有可用模型，请先在顶层 models 或账号 models 中配置模型。
+              </div>
             )}
 
             <div className={styles.testLog} aria-live="polite">
@@ -1924,7 +2277,8 @@ export function ClaudeApiPoolPage() {
               {testResult && (
                 <>
                   <div className={testResult.status === 'ok' ? styles.logSuccess : styles.logError}>
-                    $ {testResult.status === 'ok' ? '测试成功' : '测试失败'} HTTP {testResult.status_code} · {testResult.duration_ms}ms
+                    $ {testResult.status === 'ok' ? '测试成功' : '测试失败'} HTTP{' '}
+                    {testResult.status_code} · {testResult.duration_ms}ms
                   </div>
                   <div>$ model={testResult.model}</div>
                   {testResult.message && <div>$ message={testResult.message}</div>}
@@ -1946,15 +2300,21 @@ export function ClaudeApiPoolPage() {
         width={760}
         footer={
           <div className={styles.modalFooter}>
-            <Button variant="ghost" onClick={() => setImportOpen(false)} disabled={importing}>取消</Button>
+            <Button variant="ghost" onClick={() => setImportOpen(false)} disabled={importing}>
+              取消
+            </Button>
             <Button variant="secondary" onClick={() => exportPool('json')} disabled={importing}>
               <IconDownload size={16} /> 导出 JSON
             </Button>
             <Button variant="secondary" onClick={() => exportPool('yaml')} disabled={importing}>
               <IconDownload size={16} /> 导出 YAML
             </Button>
-            <Button variant="secondary" onClick={previewImport} loading={importing}>预览</Button>
-            <Button onClick={runImport} loading={importing}>导入迁移文件</Button>
+            <Button variant="secondary" onClick={previewImport} loading={importing}>
+              预览
+            </Button>
+            <Button onClick={runImport} loading={importing}>
+              导入迁移文件
+            </Button>
           </div>
         }
       >
@@ -1963,17 +2323,29 @@ export function ClaudeApiPoolPage() {
             <strong>低频备份和迁移</strong>
             <p>
               日常新增账号请使用页面里的账号导入框。这里用于跨机器迁移、旧配置导入或完整备份恢复；
-              当前运行数据仍以 SQLite 为主存储。
+              当前运行数据仍以 PostgreSQL 为主存储。
             </p>
           </div>
           <div className={styles.exampleActions}>
-            <Button variant="secondary" size="sm" onClick={() => fillImportExample(simpleImportExample)}>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => fillImportExample(simpleImportExample)}
+            >
               账号示例
             </Button>
-            <Button variant="secondary" size="sm" onClick={() => fillImportExample(yamlImportExample)}>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => fillImportExample(yamlImportExample)}
+            >
               填入 YAML 示例
             </Button>
-            <Button variant="secondary" size="sm" onClick={() => fillImportExample(jsonImportExample)}>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => fillImportExample(jsonImportExample)}
+            >
               填入 JSON 示例
             </Button>
           </div>

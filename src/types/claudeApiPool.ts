@@ -5,7 +5,9 @@ export interface ClaudeAPIPoolConfig {
   'pure-mode'?: boolean;
   path?: string;
   import_path?: string;
-  storage?: string;
+  storage?: 'postgres' | string;
+  storage_backend?: 'postgres' | string;
+  storage_schema?: string;
   defaults?: ClaudeAPIPoolDefaults;
   models?: ModelAlias[];
   'virtual-cache'?: ClaudeAPIPoolVirtualCacheConfig;

@@ -33,6 +33,8 @@ export const claudeApiPoolApi = {
       path?: string;
       import_path?: string;
       storage?: string;
+      storage_backend?: string;
+      storage_schema?: string;
       defaults?: ClaudeAPIPoolConfig['defaults'];
       models?: ClaudeAPIPoolConfig['models'];
       'virtual-cache'?: ClaudeAPIPoolConfig['virtual-cache'];
@@ -67,18 +69,23 @@ export const claudeApiPoolApi = {
   exportPool: async (format: 'yaml' | 'json' = 'yaml') => {
     const response = await apiClient.getRaw(`/claude-api-pool/export?format=${format}`, {
       responseType: 'text',
-      headers: { Accept: format === 'json' ? 'application/json' : 'application/yaml, text/yaml, text/plain' },
+      headers: {
+        Accept: format === 'json' ? 'application/json' : 'application/yaml, text/yaml, text/plain',
+      },
     });
     const data: unknown = response.data;
     return typeof data === 'string' ? data : String(data ?? '');
   },
 
   importPool: (content: string, replace: boolean, dryRun = false) =>
-    apiClient.post<ClaudeAPIPoolImportPreview | ClaudeAPIPoolImportResult>('/claude-api-pool/import', {
-      content,
-      replace,
-      dry_run: dryRun,
-    }),
+    apiClient.post<ClaudeAPIPoolImportPreview | ClaudeAPIPoolImportResult>(
+      '/claude-api-pool/import',
+      {
+        content,
+        replace,
+        dry_run: dryRun,
+      }
+    ),
 
   updateItem: (position: number, itemHash: string, value: ClaudeAPIPoolItemRaw) =>
     apiClient.patch<{ status: string; item: ClaudeAPIPoolItem }>(
@@ -115,5 +122,6 @@ export const claudeApiPoolApi = {
       ? apiClient.post<{ status: string }>(`/claude-api-pool/items/${position}/reset-cooling`)
       : apiClient.post<{ status: string }>('/claude-api-pool/reset-cooling'),
 
-  clearLedger: () => apiClient.post<{ status: string; entries: number }>('/claude-api-pool/ledger/clear'),
+  clearLedger: () =>
+    apiClient.post<{ status: string; entries: number }>('/claude-api-pool/ledger/clear'),
 };

@@ -28,8 +28,8 @@ The address is auto-detected from the current page URL; manual override is suppo
 ### Option B: Run the dev server
 
 ```bash
-npm ci
-npm run dev
+bun install --frozen-lockfile
+bun run dev
 ```
 
 Open `http://localhost:5173`, then connect to your CLI Proxy API backend instance.
@@ -37,13 +37,13 @@ Open `http://localhost:5173`, then connect to your CLI Proxy API backend instanc
 ### Option C: Build a single HTML file
 
 ```bash
-npm ci
-npm run build
+bun install --frozen-lockfile
+bun run build
 ```
 
 - Output: `dist/index.html` (all assets are inlined).
 - For CLI Proxy API bundling, the release workflow renames it to `management.html`.
-- To preview locally: `npm run preview`
+- To preview locally: `bun run preview`
 
 Tip: opening `dist/index.html` via `file://` may be blocked by browser CORS; serving it (preview/static server) is more reliable.
 
@@ -78,10 +78,9 @@ Check the CLI Proxy API server documentation/config comments for the full authen
 - **AI Providers**:
   - Gemini/Codex/Claude/Vertex key entries (base URL, headers, proxy, model aliases, excluded models, prefix).
   - OpenAI-compatible providers (multiple API keys, custom headers, model alias import via `/v1/models`, optional browser-side "chat/completions" test).
-  - Ampcode integration (upstream URL/key, force mappings, model mapping table).
 - **Auth Files**: upload/download/delete JSON credentials, filter/search/pagination, runtime-only indicators, view supported models per credential (when the server supports it), manage OAuth excluded models (supports `*` wildcards), configure OAuth model alias mappings.
-- **OAuth**: start OAuth/device flows for Codex, Anthropic/Claude, Antigravity, Gemini CLI, Kimi, and xAI/Grok; poll status; submit callback URLs or xAI/Grok displayed codes; import Vertex JSON credentials and iFlow cookies.
-- **Quota Management**: manage quota limits and usage for Claude, Antigravity, Codex, Gemini CLI, and other providers.
+- **OAuth**: start OAuth/device flows for Codex, Anthropic/Claude, Antigravity, Kimi, and xAI/Grok; poll status; submit callback URLs or xAI/Grok displayed codes; import Vertex JSON credentials and iFlow cookies.
+- **Quota Management**: manage quota limits and usage for Claude, Antigravity, Codex, Kimi, xAI/Grok, and other providers.
 - **Logs**: tail logs with incremental polling, auto-refresh, search, hide management traffic, clear logs; download request error log files.
 - **System**: quick links, update check, request logging toggle, local login data cleanup, and fetch `/v1/models` (grouped view). Requires at least one proxy API key to query models.
 
@@ -136,12 +135,14 @@ The UI language is automatically detected from browser settings and can be manua
 ## Development
 
 ```bash
-npm run dev        # Vite dev server
-npm run build      # tsc + Vite build
-npm run preview    # serve dist locally
-npm run lint       # ESLint (fails on warnings)
-npm run format     # Prettier
-npm run type-check # tsc --noEmit
+bun run dev        # Vite dev server
+bun run build      # tsc + Vite build
+bun run preview    # serve dist locally
+bun run test       # Bun test suite
+bun run lint       # ESLint (fails on warnings)
+bun run verify     # test + lint + build
+bun run format     # Prettier
+bun run type-check # tsc --noEmit
 ```
 
 ## Contributing
@@ -150,7 +151,7 @@ Issues and PRs are welcome. Please include:
 
 - Reproduction steps (server version + UI version)
 - Screenshots for UI changes
-- Verification notes (`npm run lint`, `npm run type-check`, `npm run build`)
+- Verification notes (`bun run verify`, plus `bun run type-check` when run separately)
 
 ## License
 

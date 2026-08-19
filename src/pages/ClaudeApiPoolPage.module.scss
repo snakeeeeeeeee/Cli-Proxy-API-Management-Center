@@ -133,8 +133,11 @@
   gap: 7px;
   min-width: 0;
   padding: 17px 18px;
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--pool-surface-strong) 96%, transparent), var(--pool-surface));
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--pool-surface-strong) 96%, transparent),
+    var(--pool-surface)
+  );
   box-shadow: var(--pool-inset);
 
   span {
@@ -174,7 +177,9 @@
   border: 1px solid var(--pool-border-strong);
   border-radius: $radius-md;
   background: var(--pool-surface);
-  box-shadow: var(--pool-inset), 0 10px 28px rgb(45 42 38 / 0.05);
+  box-shadow:
+    var(--pool-inset),
+    0 10px 28px rgb(45 42 38 / 0.05);
 }
 
 .virtualCacheHeader,
@@ -418,8 +423,26 @@
   border-radius: $radius-md;
   background: color-mix(in srgb, var(--pool-surface) 76%, transparent);
 
+  :global(.header-input-list) {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+  }
+
   :global(.header-input-row) {
+    display: grid;
     grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: $spacing-sm;
+  }
+
+  :global(.header-separator) {
+    color: var(--text-secondary);
+    text-align: center;
+  }
+
+  :global(.align-start) {
+    width: fit-content;
   }
 }
 
@@ -612,8 +635,11 @@
   padding: 13px;
   border: 1px solid var(--pool-border);
   border-radius: $radius-md;
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--pool-surface-strong) 88%, transparent), var(--pool-muted-surface));
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--pool-surface-strong) 88%, transparent),
+    var(--pool-muted-surface)
+  );
 
   > span {
     color: var(--text-tertiary);
@@ -843,7 +869,10 @@
 
 .toolbar {
   display: grid;
-  grid-template-columns: minmax(130px, 0.45fr) minmax(220px, 1fr) minmax(150px, 190px) minmax(140px, 170px);
+  grid-template-columns: minmax(130px, 0.45fr) minmax(220px, 1fr) minmax(150px, 190px) minmax(
+      140px,
+      170px
+    );
   gap: 10px;
   align-items: center;
   padding: 12px;
