@@ -28,7 +28,6 @@ import {
   IconSidebarQuota,
   IconSidebarStore,
   IconSidebarSystem,
-  IconTable,
   IconChevronDown,
 } from '@/components/ui/icons';
 import { INLINE_LOGO_JPEG } from '@/assets/logoInline';
@@ -56,7 +55,6 @@ const sidebarIcons: Record<string, ReactNode> = {
   dashboard: <IconSidebarDashboard size={18} />,
   quickStart: <IconSidebarQuickStart size={18} />,
   aiProviders: <IconSidebarProviders size={18} />,
-  claudeApiPool: <IconTable size={18} />,
   authFiles: <IconSidebarAuthFiles size={18} />,
   oauth: <IconSidebarOauth size={18} />,
   quota: <IconSidebarQuota size={18} />,
@@ -615,11 +613,6 @@ export function MainLayout() {
           labelKey: 'nav.ai_providers',
           metaKey: 'nav_meta.ai_providers',
           icon: sidebarIcons.aiProviders,
-        },
-        {
-          path: '/claude-api-pool',
-          labelKey: 'nav.claude_api_pool',
-          icon: sidebarIcons.claudeApiPool,
         },
         {
           path: '/auth-files',
